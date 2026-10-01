@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>pk-service</artifactId>
+	<description>Ứng dụng chạy: ghép các module, cấu hình, Flyway migration</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.pk.core.business</groupId>
+			<artifactId>pk-business</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-identity</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-model</artifactId>
+		</dependency>
+		<dependency>
+			<!-- DataSource (Hikari) cho Flyway; DataSourceTransactionManager+Mirage giờ khai báo ở
+			     pk-business (MirageConfig chuyển sang đó 2026-09-25), pk-service nhận lại qua transitive -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<!-- Boot 3.2 dùng Flyway 9.x: hỗ trợ PostgreSQL ngay trong flyway-core -->
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+</project>

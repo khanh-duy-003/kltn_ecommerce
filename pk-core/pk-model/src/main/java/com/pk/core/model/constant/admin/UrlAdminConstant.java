@@ -1,0 +1,101 @@
+package com.pk.core.model.constant.admin;
+
+import com.pk.core.model.constant.UrlConstant;
+import lombok.experimental.UtilityClass;
+
+/**
+ * Hằng route cho toàn bộ API admin. Đặt ở pk-model (gói {@code constant.admin}) — CÙNG CHỖ với
+ * {@link UrlConstant}/{@code UrlIdentConstant} (người dùng chỉnh lại 2026-09-29, lần sửa thứ 3 trong
+ * ngày: "sao lại tạo trong common. tạo trong model chứ" — xem claude/RULE-CODE.md mục "Admin tách
+ * riêng: constant đặt ở pk-model"). Nhờ đặt cùng module với {@code UrlConstant} nên dùng lại được
+ * thẳng {@code UrlConstant.Common.BASE} (không cần tự định nghĩa lại "/api" như lúc đặt ở pk-common)
+ * — giống đúng cách {@code UrlIdentConstant} đã làm.
+ *
+ * <p>Mỗi nhóm nghiệp vụ admin (theo document/09-tong-hop-api-fe.md mục I-P) là 1 lớp lồng
+ * {@code @UtilityClass}, cùng khuôn mẫu {@code UrlConstant}/{@code UrlIdentConstant} đã có (field
+ * {@code public final String}, không cần {@code static}).</p>
+ */
+@UtilityClass
+public class UrlAdminConstant {
+
+    /** Hằng dùng chung cho mọi nhóm route admin. */
+    @UtilityClass
+    public static class Common {
+        public final String BASE = UrlConstant.Common.BASE + "/admin";
+    }
+
+    /** AdminAuthRest (pk-api, gói api.rest.admin - mục I spec). Đã làm 2026-09-29: login/logout/me. */
+    @UtilityClass
+    public static class Auth {
+        public final String BASE = Common.BASE + "/auth";
+        public final String LOGIN = BASE + "/login";
+        public final String LOGOUT = BASE + "/logout";
+        public final String ME = BASE + "/me";
+    }
+
+    /** AdminCatalogRest (pk-api, gói api.rest.admin - mục J spec). Sub-path còn lại (path variable,
+     * hành động archive/variants) viết trực tiếp trong @GetMapping/@PostMapping... của Rest, theo
+     * đúng quy ước chung (xem RULE-CODE.md mục "Đường dẫn API dùng hằng"). */
+    @UtilityClass
+    public static class Catalog {
+        public final String BASE = Common.BASE + "/catalog";
+        public final String PRODUCTS = BASE + "/products";
+        public final String VARIANTS = BASE + "/variants";
+        public final String CATEGORIES = BASE + "/categories";
+        public final String COLLECTIONS = BASE + "/collections";
+        public final String ATTRIBUTES = BASE + "/attributes";
+    }
+
+    /** AdminPromotionVoucherRest (pk-api - mục K spec). */
+    @UtilityClass
+    public static class Promotion {
+        public final String BASE = Common.BASE + "/promotions";
+    }
+
+    /** AdminPromotionVoucherRest (pk-api - mục K spec). */
+    @UtilityClass
+    public static class Voucher {
+        public final String BASE = Common.BASE + "/vouchers";
+    }
+
+    /** AdminOrderRest (pk-api, gói api.rest.admin - mục L spec). Sub-path path-variable (/{orderCode},
+     * /{orderCode}/status, /cancel, /return, /refund) viết trực tiếp trong @GetMapping/@PatchMapping/
+     * @PostMapping của Rest, theo đúng quy ước chung (RULE-CODE.md mục "Đường dẫn API dùng hằng"). */
+    @UtilityClass
+    public static class Order {
+        public final String BASE = Common.BASE + "/orders";
+    }
+
+    /** AdminCustomerRest (pk-api, gói api.rest.admin - mục N spec). CHỈ đọc (không có API tạo/sửa/
+     * xoá khách hàng từ phía admin). */
+    @UtilityClass
+    public static class Customer {
+        public final String BASE = Common.BASE + "/customers";
+    }
+
+    /** AdminCmsRest (pk-api, gói api.rest.admin - mục O spec). Sub-path path-variable (/{pageId},
+     * /{pageId}/blocks, /{pageId}/blocks/{blockId}) viết trực tiếp trong @GetMapping/@PostMapping/
+     * @PutMapping/@DeleteMapping của Rest, theo đúng quy ước chung. */
+    @UtilityClass
+    public static class Cms {
+        public final String BASE = Common.BASE + "/cms";
+        public final String PAGES = BASE + "/pages";
+    }
+
+    /** AdminBadgeRest (pk-api, gói api.rest.admin - mục P spec). GET/POST/PUT/PATCH/DELETE cụ thể
+     * theo path variable viết trực tiếp trong Rest (RULE-CODE.md mục "Đường dẫn API dùng hằng"). */
+    @UtilityClass
+    public static class Badge {
+        public final String TEMPLATES = Common.BASE + "/badge-templates";
+        public final String FLOW = Common.BASE + "/badge-flow";
+    }
+
+    /** AdminInventoryRest (pk-api, gói api.rest.admin - mục M spec). `warehouseId` quyết định thiết
+     * kế cuối cùng: xem javadoc InventoryService (pk-business) - chỉ 1 kho ngầm định "MAIN". */
+    @UtilityClass
+    public static class Inventory {
+        public final String BASE = Common.BASE + "/inventory";
+        public final String STOCK_LEVELS = BASE + "/stock-levels";
+        public final String ADJUSTMENTS = BASE + "/adjustments";
+    }
+}

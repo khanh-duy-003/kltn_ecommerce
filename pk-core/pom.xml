@@ -1,0 +1,130 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.pk.core</groupId>
+	<artifactId>pk-core</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<description>Project PK Core - Jewelry Commerce (graduation project)</description>
+
+	<properties>
+		<java.version>17</java.version>
+		<maven.compiler.release>17</maven.compiler.release>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<spring.boot.version>3.2.0</spring.boot.version>
+		<springdoc.version>2.3.0</springdoc.version>
+		<mirage.version>3.0.0</mirage.version>
+		<spar-wings-chunk.version>1.0.0</spar-wings-chunk.version>
+	</properties>
+
+	<modules>
+		<module>pk-common</module>
+		<module>pk-model</module>
+		<module>pk-identity</module>
+		<module>pk-business</module>
+		<module>pk-api</module>
+		<module>pk-service</module>
+		<module>pk-unit-test</module>
+	</modules>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${spring.boot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.springdoc</groupId>
+				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+				<version>${springdoc.version}</version>
+			</dependency>
+
+			<!-- 2-way SQL (Mirage) -->
+			<dependency>
+				<groupId>vn.com.unit.springframework.data.mirage</groupId>
+				<artifactId>spring-data-mirage</artifactId>
+				<version>${mirage.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>vn.com.unit.spar-wings</groupId>
+				<artifactId>spar-wings-spring-data-chunk</artifactId>
+				<version>${spar-wings-chunk.version}</version>
+			</dependency>
+
+			<!-- Các module nội bộ: khai báo version một chỗ -->
+			<dependency>
+				<groupId>com.pk.core.common</groupId>
+				<artifactId>pk-common</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pk.core</groupId>
+				<artifactId>pk-model</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pk.core</groupId>
+				<artifactId>pk-identity</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pk.core.business</groupId>
+				<artifactId>pk-business</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pk.core</groupId>
+				<artifactId>pk-api</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pk.core</groupId>
+				<artifactId>pk-service</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.11.0</version>
+					<configuration>
+						<!-- Cần để Spring đọc được tên tham số (@PathVariable, @RequestParam...) -->
+						<parameters>true</parameters>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<!-- Bản mới để chạy được JUnit 5 (Maven cũ mặc định surefire 2.12 không chạy JUnit 5) -->
+					<version>3.2.2</version>
+				</plugin>
+				<plugin>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-maven-plugin</artifactId>
+					<version>${spring.boot.version}</version>
+					<configuration>
+						<!-- Giữ jar thường để pk-unit-test dùng được; jar chạy được có đuôi -exec -->
+						<classifier>exec</classifier>
+					</configuration>
+					<executions>
+						<execution>
+							<goals>
+								<goal>repackage</goal>
+							</goals>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>

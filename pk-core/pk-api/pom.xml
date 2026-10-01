@@ -1,0 +1,48 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>pk-api</artifactId>
+	<description>REST controller cho FE (storefront). Tạo lại 2026-09-29 sau khi bị xoá cùng domain Catalog cũ; chỉ có ProductRest (đọc, không cần đăng nhập) - admin CRUD chưa làm lại.</description>
+
+	<dependencies>
+		<dependency>
+			<!-- sinh constructor DI (@RequiredArgsConstructor) -->
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core.common</groupId>
+			<artifactId>pk-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-model</artifactId>
+		</dependency>
+		<dependency>
+			<!-- ProductService/CategoryService/CollectionService + AbstractRest/RestSuccessHandle -->
+			<groupId>com.pk.core.business</groupId>
+			<artifactId>pk-business</artifactId>
+		</dependency>
+		<dependency>
+			<!-- SecurityUser (@AuthenticationPrincipal) cho CustomerAddressRest/OrderRest - thêm lại
+			     2026-09-29 (lần dọn 2026-09-25 từng bỏ vì lúc đó chưa có Rest nào cần đến pk-identity) -->
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-identity</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+	</dependencies>
+</project>

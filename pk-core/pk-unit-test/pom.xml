@@ -1,0 +1,32 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>pk-unit-test</artifactId>
+	<description>Toàn bộ unit test và integration test của dự án</description>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-service</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Bỏ spring-security-test (gỡ 2026-09-25): không có test nào dùng @WithMockUser /
+		     SecurityMockMvcRequestPostProcessors - test hiện tại tự dựng JWT thật để xác thực. -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+</project>

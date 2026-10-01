@@ -1,0 +1,55 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>pk-identity</artifactId>
+	<description>Đăng nhập, phân quyền, JWT (RSA), refresh token (entity/dto/repository dùng chung với pk-model/pk-business, không còn độc lập)</description>
+
+	<dependencies>
+		<dependency>
+			<!-- sinh getter/setter/constructor cho entity và dto -->
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core.common</groupId>
+			<artifactId>pk-common</artifactId>
+		</dependency>
+		<dependency>
+			<!-- entity/dto dùng chung (User/Role/RefreshToken chuyển sang đây) -->
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-model</artifactId>
+		</dependency>
+		<dependency>
+			<!-- repository dùng chung (UserRepo/RoleRepo/RefreshTokenRepo chuyển sang đây) -->
+			<groupId>com.pk.core.business</groupId>
+			<artifactId>pk-business</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<!-- Có sẵn Nimbus JOSE: NimbusJwtEncoder / NimbusJwtDecoder -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<!-- Không khai báo spring-boot-starter-jdbc trực tiếp nữa (gỡ 2026-09-25): pk-identity chỉ
+		     cần @Transactional (spring-tx), không tự tạo DataSource/JDBC nào; đã có sẵn transitive
+		     qua dependency pk-business ở trên (pk-business khai báo spring-boot-starter-jdbc). -->
+	</dependencies>
+</project>

@@ -1,0 +1,52 @@
+package com.pk.core.business.service;
+
+import com.pk.core.common.web.PageResponse;
+import com.pk.core.model.dto.request.AdminOrderStatusRequestDto;
+import com.pk.core.model.dto.request.CreateOrderRequestDto;
+import com.pk.core.model.dto.response.OrderResponseDto;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public interface OrderService {
+
+    /** Tạo đơn từ danh sách dòng hàng client gửi kèm (không có cart phía server - xem
+     * document/09-tong-hop-api-fe.md mục D). Giữ chỗ tồn kho (reserved) cho từng SKU, áp voucher nếu
+     * có, snapshot địa chỉ giao hàng, ghi timeline PENDING đầu tiên. CHƯA tính phí ship theo phương
+     * thức/khu vực (để 0) và CHƯA áp khuyến mãi tự động theo sản phẩm (productDiscount để 0, domain
+     * Promotion chưa làm) - cố ý để dành đợt sau. */
+    OrderResponseDto create(Long userId, CreateOrderRequestDto req);
+
+    PageResponse<OrderResponseDto> listMine(Long userId, int page, int take);
+
+    OrderResponseDto findByCodeForUser(Long userId, String code);
+
+    /** Khách tự huỷ đơn (chỉ khi còn PENDING/CONFIRMED) - nhả tồn kho đã giữ chỗ, ghi timeline CANCELLED. */
+    OrderResponseDto cancel(Long userId, String code, String reason);
+
+    // ---------- Admin (mục L spec, KHÔNG lọc theo userId - IDOR không áp dụng cho admin) ----------
+
+    /** GET /admin/orders - search/status/paymentStatus lọc ở SQL (OrderRepo.searchAdmin), fromDate/
+     * toDate (định dạng yyyy-MM-dd, có thể null/rỗng) lọc bằng Java trên placedAt sau khi query. */
+    PageResponse<OrderResponseDto> searchForAdmin(String search, String status, String paymentStatus,
+                                                   String fromDate, String toDate, int page, int take);
+
+    /** GET /admin/orders/{orderCode} - không lọc theo userId (khác findByCodeForUser). */
+    OrderResponseDto findByCodeForAdmin(String code);
+
+    /** PATCH /admin/orders/{orderCode}/status - validate qua OrderEntity.canTransitionTo(), sai luồng
+     * ném BusinessException.conflict(ErrorCode.INVALID_STATUS_TRANSITION) (409). */
+    OrderResponseDto updateStatus(String code, AdminOrderStatusRequestDto request);
+
+    /** POST /admin/orders/{orderCode}/cancel - rộng hơn cancel() của khách (xem
+     * OrderEntity.isCancellableByAdmin()), nhả tồn kho toàn bộ dòng hàng, ghi timeline CANCELLED. */
+    OrderResponseDto cancelByAdmin(String code, String reason);
+
+    /** POST /admin/orders/{orderCode}/return - chỉ khi đơn DELIVERED (OrderEntity.isReturnable()),
+     * nhả tồn kho CÁC DÒNG trong lineIds (không phải toàn đơn), chuyển status RETURNED. */
+    OrderResponseDto returnOrder(String code, List<Long> lineIds);
+
+    /** POST /admin/orders/{orderCode}/refund - chỉ khi đơn paymentStatus=PAID, chuyển paymentStatus
+     * sang REFUNDED, ghi amount/reason vào timeline (xem AdminOrderRefundRequestDto javadoc). */
+    OrderResponseDto refund(String code, BigDecimal amount, String reason);
+}

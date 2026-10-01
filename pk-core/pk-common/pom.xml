@@ -1,0 +1,27 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<groupId>com.pk.core.common</groupId>
+	<artifactId>pk-common</artifactId>
+	<description>Module độc lập tái dùng: tiện ích dùng chung (BaseEntity, exception, SlugUtil, PageResponse)</description>
+
+	<dependencies>
+		<dependency>
+			<!-- sinh getter/setter/constructor cho entity và dto -->
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+	<!-- Không còn dependency Spring nào: pk-common chỉ là POJO thuần (Lombok) + java chuẩn, đúng
+	     rule "module ĐỘC LẬP, tái sử dụng". 3 dependency cũ (spar-wings-spring-data-chunk,
+	     spring-data-commons, spring-boot-starter) là thừa từ thời PkRepository từng đặt ở đây
+	     (đã chuyển sang pk-business.repository ngày 2026-09-20) - gỡ bỏ 2026-09-25. -->
+</project>

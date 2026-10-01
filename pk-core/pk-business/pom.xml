@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.pk.core</groupId>
+		<artifactId>pk-core</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<groupId>com.pk.core.business</groupId>
+	<artifactId>pk-business</artifactId>
+	<description>Tầng nghiệp vụ: service, impl, repository, config (catalog, sau này cart/order/payment/stylist)</description>
+
+	<dependencies>
+		<dependency>
+			<!-- sinh constructor DI (@RequiredArgsConstructor) -->
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core.common</groupId>
+			<artifactId>pk-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.pk.core</groupId>
+			<artifactId>pk-model</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+		</dependency>
+		<dependency>
+			<!-- 2-way SQL: repository dùng file .sql (thử nghiệm, chưa chuyển code sang) -->
+			<groupId>vn.com.unit.springframework.data.mirage</groupId>
+			<artifactId>spring-data-mirage</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>vn.com.unit.spar-wings</groupId>
+			<artifactId>spar-wings-spring-data-chunk</artifactId>
+		</dependency>
+		<dependency>
+			<!-- spring-tx (@Transactional), spring-jdbc, HikariCP -->
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
+	</dependencies>
+</project>

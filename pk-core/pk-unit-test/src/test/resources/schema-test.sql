@@ -1,0 +1,395 @@
+-- Schema cho test trên H2: tương đương db/migration/V1__init.sql (thiết kế mới 2026-09-29) nhưng
+-- dùng cú pháp H2. Khoá chính dùng SEQUENCE tên <bảng>_id_seq (giống sequence PostgreSQL tự tạo cho
+-- cột IDENTITY), vì Mirage lấy id bằng SELECT NEXTVAL('<bảng>_id_seq') trước khi insert. Bảng nối
+-- (user_roles, product_collections, promotion_products) không cần sequence (không có cột id riêng).
+-- Không tạo index (test không cần, giữ file gọn - giống quy ước bản trước).
+
+CREATE SEQUENCE roles_id_seq START WITH 1;
+CREATE SEQUENCE users_id_seq START WITH 1;
+CREATE SEQUENCE refresh_tokens_id_seq START WITH 1;
+CREATE SEQUENCE customer_addresses_id_seq START WITH 1;
+CREATE SEQUENCE categories_id_seq START WITH 1;
+CREATE SEQUENCE collections_id_seq START WITH 1;
+CREATE SEQUENCE products_id_seq START WITH 1;
+CREATE SEQUENCE product_skus_id_seq START WITH 1;
+CREATE SEQUENCE orders_id_seq START WITH 1;
+CREATE SEQUENCE order_items_id_seq START WITH 1;
+CREATE SEQUENCE order_timeline_id_seq START WITH 1;
+CREATE SEQUENCE payments_id_seq START WITH 1;
+CREATE SEQUENCE vouchers_id_seq START WITH 1;
+CREATE SEQUENCE promotions_id_seq START WITH 1;
+
+-- ===================== IDENTITY =====================
+CREATE TABLE roles (
+    id           BIGINT PRIMARY KEY,
+    name         VARCHAR(30) NOT NULL,
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    CONSTRAINT uq_roles_name UNIQUE (name)
+);
+
+CREATE TABLE users (
+    id             BIGINT PRIMARY KEY,
+    email          VARCHAR(254) NOT NULL,
+    password_hash  VARCHAR(100) NOT NULL,
+    full_name      VARCHAR(120) NOT NULL,
+    phone          VARCHAR(20),
+    enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+    created_id     BIGINT,
+    created_date   TIMESTAMP NOT NULL,
+    updated_id     BIGINT,
+    updated_date   TIMESTAMP,
+    deleted_id     BIGINT,
+    deleted_date   TIMESTAMP,
+    CONSTRAINT uq_users_email UNIQUE (email),
+    CONSTRAINT ck_users_email_lowercase CHECK (email = lower(email))
+);
+
+CREATE TABLE user_roles (
+    user_id  BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    role_id  BIGINT NOT NULL REFERENCES roles (id),
+    PRIMARY KEY (user_id, role_id)
+);
+
+CREATE TABLE refresh_tokens (
+    id           BIGINT PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash   VARCHAR(64) NOT NULL,
+    family_id    VARCHAR(36) NOT NULL,
+    expires_at   TIMESTAMP NOT NULL,
+    revoked_at   TIMESTAMP,
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    CONSTRAINT uq_refresh_tokens_hash UNIQUE (token_hash)
+);
+
+-- ===================== ĐỊA CHỈ GIAO HÀNG =====================
+CREATE TABLE customer_addresses (
+    id             BIGINT PRIMARY KEY,
+    user_id        BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    recipient_name VARCHAR(120) NOT NULL,
+    phone          VARCHAR(20) NOT NULL,
+    province       VARCHAR(100) NOT NULL,
+    district       VARCHAR(100) NOT NULL,
+    ward           VARCHAR(100) NOT NULL,
+    address_line   VARCHAR(255) NOT NULL,
+    is_default     BOOLEAN NOT NULL DEFAULT FALSE,
+    created_id     BIGINT,
+    created_date   TIMESTAMP NOT NULL,
+    updated_id     BIGINT,
+    updated_date   TIMESTAMP,
+    deleted_id     BIGINT,
+    deleted_date   TIMESTAMP
+);
+
+-- ===================== CATALOG =====================
+CREATE TABLE categories (
+    id           BIGINT PRIMARY KEY,
+    parent_id    BIGINT REFERENCES categories (id),
+    name         VARCHAR(120) NOT NULL,
+    slug         VARCHAR(140) NOT NULL,
+    description  VARCHAR(500),
+    image_url    VARCHAR(500),
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    deleted_id   BIGINT,
+    deleted_date TIMESTAMP,
+    CONSTRAINT uq_categories_slug UNIQUE (slug)
+);
+
+CREATE TABLE collections (
+    id             BIGINT PRIMARY KEY,
+    name           VARCHAR(150) NOT NULL,
+    slug           VARCHAR(170) NOT NULL,
+    description    VARCHAR(1000),
+    hero_image_url VARCHAR(500),
+    status         VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    created_id     BIGINT,
+    created_date   TIMESTAMP NOT NULL,
+    updated_id     BIGINT,
+    updated_date   TIMESTAMP,
+    deleted_id     BIGINT,
+    deleted_date   TIMESTAMP,
+    CONSTRAINT uq_collections_slug UNIQUE (slug),
+    CONSTRAINT ck_collections_status CHECK (status IN ('DRAFT', 'PUBLISHED'))
+);
+
+CREATE TABLE products (
+    id                BIGINT PRIMARY KEY,
+    category_id       BIGINT NOT NULL REFERENCES categories (id),
+    code              VARCHAR(60) NOT NULL,
+    name              VARCHAR(200) NOT NULL,
+    slug              VARCHAR(220) NOT NULL,
+    short_description VARCHAR(300),
+    description       VARCHAR(2000),
+    material          VARCHAR(80),
+    occasion          VARCHAR(80),
+    thumbnail_url     VARCHAR(500),
+    base_price        NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    status            VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    published_at      TIMESTAMP,
+    version           BIGINT NOT NULL DEFAULT 0,
+    created_id        BIGINT,
+    created_date      TIMESTAMP NOT NULL,
+    updated_id        BIGINT,
+    updated_date      TIMESTAMP,
+    deleted_id        BIGINT,
+    deleted_date      TIMESTAMP,
+    CONSTRAINT uq_products_code UNIQUE (code),
+    CONSTRAINT uq_products_slug UNIQUE (slug),
+    CONSTRAINT ck_products_price CHECK (base_price >= 0),
+    CONSTRAINT ck_products_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    CONSTRAINT ck_products_published CHECK (status <> 'PUBLISHED' OR published_at IS NOT NULL)
+);
+
+CREATE TABLE product_collections (
+    product_id    BIGINT NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    collection_id BIGINT NOT NULL REFERENCES collections (id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, collection_id)
+);
+
+CREATE TABLE product_skus (
+    id                BIGINT PRIMARY KEY,
+    product_id        BIGINT NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    sku_code          VARCHAR(64) NOT NULL,
+    name              VARCHAR(150),
+    status            VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    material          VARCHAR(80),
+    gemstone          VARCHAR(80),
+    size_label        VARCHAR(40),
+    metal_color_label VARCHAR(40),
+    carat_weight      NUMERIC(6, 2),
+    weight_gram       NUMERIC(8, 2),
+    list_price        NUMERIC(15, 0) NOT NULL,
+    sale_price        NUMERIC(15, 0),
+    on_hand           INTEGER NOT NULL DEFAULT 0,
+    reserved          INTEGER NOT NULL DEFAULT 0,
+    is_default        BOOLEAN NOT NULL DEFAULT FALSE,
+    version           BIGINT NOT NULL DEFAULT 0,
+    created_id        BIGINT,
+    created_date      TIMESTAMP NOT NULL,
+    updated_id        BIGINT,
+    updated_date      TIMESTAMP,
+    deleted_id        BIGINT,
+    deleted_date      TIMESTAMP,
+    CONSTRAINT uq_product_skus_code UNIQUE (sku_code),
+    CONSTRAINT ck_product_skus_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    CONSTRAINT ck_product_skus_list_price CHECK (list_price >= 0),
+    CONSTRAINT ck_product_skus_sale_price CHECK (sale_price IS NULL OR sale_price >= 0),
+    CONSTRAINT ck_product_skus_on_hand CHECK (on_hand >= 0),
+    CONSTRAINT ck_product_skus_reserved CHECK (reserved >= 0),
+    CONSTRAINT ck_product_skus_reserved_lte_on_hand CHECK (reserved <= on_hand)
+);
+
+-- ===================== ĐƠN HÀNG =====================
+CREATE TABLE orders (
+    id                  BIGINT PRIMARY KEY,
+    code                VARCHAR(30) NOT NULL,
+    user_id             BIGINT NOT NULL REFERENCES users (id),
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    payment_status      VARCHAR(20) NOT NULL DEFAULT 'UNPAID',
+    payment_method      VARCHAR(30) NOT NULL,
+    shipping_method     VARCHAR(30) NOT NULL,
+    tracking_code       VARCHAR(60),
+    ship_recipient_name VARCHAR(120) NOT NULL,
+    ship_phone          VARCHAR(20) NOT NULL,
+    ship_province       VARCHAR(100) NOT NULL,
+    ship_district       VARCHAR(100) NOT NULL,
+    ship_ward           VARCHAR(100) NOT NULL,
+    ship_address_line   VARCHAR(255) NOT NULL,
+    subtotal            NUMERIC(15, 0) NOT NULL,
+    product_discount    NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    voucher_discount    NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    shipping_fee        NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    grand_total         NUMERIC(15, 0) NOT NULL,
+    applied_voucher_code VARCHAR(40),
+    note                VARCHAR(500),
+    placed_at           TIMESTAMP NOT NULL,
+    created_id          BIGINT,
+    created_date        TIMESTAMP NOT NULL,
+    updated_id          BIGINT,
+    updated_date        TIMESTAMP,
+    CONSTRAINT uq_orders_code UNIQUE (code),
+    CONSTRAINT ck_orders_status CHECK (status IN ('PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'RETURNED')),
+    CONSTRAINT ck_orders_payment_status CHECK (payment_status IN ('UNPAID', 'PAID', 'REFUNDED')),
+    CONSTRAINT ck_orders_grand_total CHECK (grand_total >= 0)
+);
+
+CREATE TABLE order_items (
+    id           BIGINT PRIMARY KEY,
+    order_id     BIGINT NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
+    product_id   BIGINT NOT NULL REFERENCES products (id),
+    sku_id       BIGINT NOT NULL REFERENCES product_skus (id),
+    name         VARCHAR(200) NOT NULL,
+    image_url    VARCHAR(500),
+    quantity     INTEGER NOT NULL,
+    unit_price   NUMERIC(15, 0) NOT NULL,
+    line_total   NUMERIC(15, 0) NOT NULL,
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    CONSTRAINT ck_order_items_quantity CHECK (quantity > 0),
+    CONSTRAINT ck_order_items_unit_price CHECK (unit_price >= 0)
+);
+
+CREATE TABLE order_timeline (
+    id           BIGINT PRIMARY KEY,
+    order_id     BIGINT NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
+    status       VARCHAR(20) NOT NULL,
+    occurred_at  TIMESTAMP NOT NULL,
+    note         VARCHAR(500),
+    actor        VARCHAR(60),
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL
+);
+
+-- ===================== THANH TOÁN =====================
+CREATE TABLE payments (
+    id             BIGINT PRIMARY KEY,
+    order_id       BIGINT NOT NULL REFERENCES orders (id),
+    provider       VARCHAR(30) NOT NULL,
+    transaction_id VARCHAR(100),
+    amount         NUMERIC(15, 0) NOT NULL,
+    status         VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    signature      VARCHAR(500),
+    created_id     BIGINT,
+    created_date   TIMESTAMP NOT NULL,
+    updated_id     BIGINT,
+    updated_date   TIMESTAMP,
+    CONSTRAINT ck_payments_amount CHECK (amount >= 0),
+    CONSTRAINT ck_payments_status CHECK (status IN ('PENDING', 'SUCCESS', 'FAILED'))
+);
+
+-- ===================== VOUCHER & KHUYẾN MÃI =====================
+CREATE TABLE vouchers (
+    id                  BIGINT PRIMARY KEY,
+    code                VARCHAR(40) NOT NULL,
+    discount_type       VARCHAR(20) NOT NULL,
+    discount_value      NUMERIC(15, 0) NOT NULL,
+    max_discount_amount NUMERIC(15, 0),
+    min_order_value     NUMERIC(15, 0) NOT NULL DEFAULT 0,
+    usage_limit         INTEGER,
+    used_count          INTEGER NOT NULL DEFAULT 0,
+    starts_at           TIMESTAMP NOT NULL,
+    ends_at             TIMESTAMP NOT NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    created_id          BIGINT,
+    created_date        TIMESTAMP NOT NULL,
+    updated_id          BIGINT,
+    updated_date        TIMESTAMP,
+    deleted_id          BIGINT,
+    deleted_date        TIMESTAMP,
+    CONSTRAINT uq_vouchers_code UNIQUE (code),
+    CONSTRAINT ck_vouchers_discount_type CHECK (discount_type IN ('PERCENT', 'FIXED')),
+    CONSTRAINT ck_vouchers_status CHECK (status IN ('DRAFT', 'PUBLISHED')),
+    CONSTRAINT ck_vouchers_period CHECK (ends_at > starts_at)
+);
+
+CREATE TABLE promotions (
+    id                  BIGINT PRIMARY KEY,
+    name                VARCHAR(150) NOT NULL,
+    discount_type       VARCHAR(20) NOT NULL,
+    discount_value      NUMERIC(15, 0) NOT NULL,
+    max_discount_amount NUMERIC(15, 0),
+    starts_at           TIMESTAMP NOT NULL,
+    ends_at             TIMESTAMP NOT NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    created_id          BIGINT,
+    created_date        TIMESTAMP NOT NULL,
+    updated_id          BIGINT,
+    updated_date        TIMESTAMP,
+    deleted_id          BIGINT,
+    deleted_date        TIMESTAMP,
+    CONSTRAINT ck_promotions_discount_type CHECK (discount_type IN ('PERCENT', 'FIXED', 'FLAT_PRICE')),
+    CONSTRAINT ck_promotions_status CHECK (status IN ('DRAFT', 'PUBLISHED')),
+    CONSTRAINT ck_promotions_period CHECK (ends_at > starts_at)
+);
+
+CREATE TABLE promotion_products (
+    promotion_id BIGINT NOT NULL REFERENCES promotions (id) ON DELETE CASCADE,
+    product_id   BIGINT NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    PRIMARY KEY (promotion_id, product_id)
+);
+
+-- ===================== V2: THUỘC TÍNH SẢN PHẨM / CMS / BADGE (Admin) =====================
+CREATE SEQUENCE product_attributes_id_seq START WITH 1;
+CREATE SEQUENCE cms_pages_id_seq START WITH 1;
+CREATE SEQUENCE cms_blocks_id_seq START WITH 1;
+CREATE SEQUENCE badge_templates_id_seq START WITH 1;
+CREATE SEQUENCE badge_flow_id_seq START WITH 1;
+
+CREATE TABLE product_attributes (
+    id           BIGINT PRIMARY KEY,
+    name         VARCHAR(120) NOT NULL,
+    code         VARCHAR(60) NOT NULL,
+    type         VARCHAR(20) NOT NULL,
+    options      VARCHAR(2000),
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    CONSTRAINT uq_product_attributes_code UNIQUE (code),
+    CONSTRAINT ck_product_attributes_type CHECK (type IN ('TEXT', 'SELECT', 'MULTISELECT'))
+);
+
+CREATE TABLE cms_pages (
+    id           BIGINT PRIMARY KEY,
+    slug         VARCHAR(140) NOT NULL,
+    title        VARCHAR(200) NOT NULL,
+    status       VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    deleted_id   BIGINT,
+    deleted_date TIMESTAMP,
+    CONSTRAINT uq_cms_pages_slug UNIQUE (slug),
+    CONSTRAINT ck_cms_pages_status CHECK (status IN ('DRAFT', 'PUBLISHED'))
+);
+
+CREATE TABLE cms_blocks (
+    id           BIGINT PRIMARY KEY,
+    page_id      BIGINT NOT NULL REFERENCES cms_pages (id) ON DELETE CASCADE,
+    type         VARCHAR(30) NOT NULL,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    data         VARCHAR(4000),
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    CONSTRAINT ck_cms_blocks_type CHECK (type IN ('BANNER', 'PRODUCT_CAROUSEL', 'HERO'))
+);
+
+CREATE TABLE badge_templates (
+    id           BIGINT PRIMARY KEY,
+    name         VARCHAR(120) NOT NULL,
+    label_text   VARCHAR(60) NOT NULL,
+    color        VARCHAR(20),
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    deleted_id   BIGINT,
+    deleted_date TIMESTAMP
+);
+
+CREATE TABLE badge_flow (
+    id           BIGINT PRIMARY KEY,
+    badge_id     BIGINT NOT NULL REFERENCES badge_templates (id) ON DELETE CASCADE,
+    rule_type    VARCHAR(20) NOT NULL,
+    rule_ref_id  BIGINT,
+    channel      VARCHAR(20) NOT NULL DEFAULT 'ALL',
+    priority     INTEGER NOT NULL DEFAULT 0,
+    active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_id   BIGINT,
+    created_date TIMESTAMP NOT NULL,
+    updated_id   BIGINT,
+    updated_date TIMESTAMP,
+    CONSTRAINT ck_badge_flow_rule_type CHECK (rule_type IN ('MANUAL', 'ALL', 'CATEGORY', 'COLLECTION', 'PROMOTION', 'OUT_OF_STOCK')),
+    CONSTRAINT ck_badge_flow_channel CHECK (channel IN ('ALL', 'WEB', 'MOBILE_WEB', 'APP'))
+);
