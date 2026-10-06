@@ -18,6 +18,14 @@ CREATE SEQUENCE order_timeline_id_seq START WITH 1;
 CREATE SEQUENCE payments_id_seq START WITH 1;
 CREATE SEQUENCE vouchers_id_seq START WITH 1;
 CREATE SEQUENCE promotions_id_seq START WITH 1;
+CREATE SEQUENCE phone_otps_id_seq START WITH 1;
+CREATE SEQUENCE carts_id_seq START WITH 1;
+CREATE SEQUENCE cart_items_id_seq START WITH 1;
+CREATE SEQUENCE wishlist_items_id_seq START WITH 1;
+CREATE SEQUENCE banner_placements_id_seq START WITH 1;
+CREATE SEQUENCE banners_id_seq START WITH 1;
+CREATE SEQUENCE customer_requests_id_seq START WITH 1;
+CREATE SEQUENCE pre_order_configs_id_seq START WITH 1;
 
 -- ===================== IDENTITY =====================
 CREATE TABLE roles (
@@ -30,10 +38,10 @@ CREATE TABLE roles (
 
 CREATE TABLE users (
     id             BIGINT PRIMARY KEY,
-    email          VARCHAR(254) NOT NULL,
+    phone          VARCHAR(20) NOT NULL,
+    email          VARCHAR(254),
     password_hash  VARCHAR(100) NOT NULL,
     full_name      VARCHAR(120) NOT NULL,
-    phone          VARCHAR(20),
     enabled        BOOLEAN NOT NULL DEFAULT TRUE,
     created_id     BIGINT,
     created_date   TIMESTAMP NOT NULL,
@@ -41,6 +49,7 @@ CREATE TABLE users (
     updated_date   TIMESTAMP,
     deleted_id     BIGINT,
     deleted_date   TIMESTAMP,
+    CONSTRAINT uq_users_phone UNIQUE (phone),
     CONSTRAINT uq_users_email UNIQUE (email),
     CONSTRAINT ck_users_email_lowercase CHECK (email = lower(email))
 );
@@ -183,8 +192,8 @@ CREATE TABLE product_skus (
     CONSTRAINT ck_product_skus_list_price CHECK (list_price >= 0),
     CONSTRAINT ck_product_skus_sale_price CHECK (sale_price IS NULL OR sale_price >= 0),
     CONSTRAINT ck_product_skus_on_hand CHECK (on_hand >= 0),
-    CONSTRAINT ck_product_skus_reserved CHECK (reserved >= 0),
-    CONSTRAINT ck_product_skus_reserved_lte_on_hand CHECK (reserved <= on_hand)
+    CONSTRAINT ck_product_skus_reserved CHECK (reserved >= 0)
+    -- Không ràng buộc reserved <= on_hand: đơn đặt trước (pre-order) cho phép giữ chỗ vượt tồn kho.
 );
 
 -- ===================== ĐƠN HÀNG =====================
@@ -353,43 +362,186 @@ CREATE TABLE cms_pages (
 );
 
 CREATE TABLE cms_blocks (
-    id           BIGINT PRIMARY KEY,
-    page_id      BIGINT NOT NULL REFERENCES cms_pages (id) ON DELETE CASCADE,
-    type         VARCHAR(30) NOT NULL,
-    sort_order   INTEGER NOT NULL DEFAULT 0,
-    data         VARCHAR(4000),
-    created_id   BIGINT,
-    created_date TIMESTAMP NOT NULL,
-    updated_id   BIGINT,
-    updated_date TIMESTAMP,
-    CONSTRAINT ck_cms_blocks_type CHECK (type IN ('BANNER', 'PRODUCT_CAROUSEL', 'HERO'))
+    id             BIGINT PRIMARY KEY,
+    page_id        BIGINT NOT NULL REFERENCES cms_pages (id) ON DELETE CASCADE,
+    type           VARCHAR(40) NOT NULL,
+    sort_order     INTEGER NOT NULL DEFAULT 0,
+    data           TEXT,
+    target_segment VARCHAR(60),
+    created_id     BIGINT,
+    created_date   TIMESTAMP NOT NULL,
+    updated_id     BIGINT,
+    updated_date   TIMESTAMP,
+    CONSTRAINT ck_cms_blocks_type CHECK (type IN ('BANNER', 'PRODUCT_CAROUSEL', 'PRODUCT_LIST', 'INFO_CARDS', 'IMAGE_GALLERY', 'PRODUCT_CATEGORY_NAV', 'PRODUCT_COLLECTION_SHOWCASE', 'PRODUCT_EXPANDABLE_DESCRIPTION'))
 );
 
 CREATE TABLE badge_templates (
-    id           BIGINT PRIMARY KEY,
-    name         VARCHAR(120) NOT NULL,
-    label_text   VARCHAR(60) NOT NULL,
-    color        VARCHAR(20),
-    created_id   BIGINT,
-    created_date TIMESTAMP NOT NULL,
-    updated_id   BIGINT,
-    updated_date TIMESTAMP,
-    deleted_id   BIGINT,
-    deleted_date TIMESTAMP
+    id                       BIGINT PRIMARY KEY,
+    name                     VARCHAR(120) NOT NULL,
+    code                     VARCHAR(80) NOT NULL,
+    description              VARCHAR(500),
+    type                     VARCHAR(20) NOT NULL,
+    badge_type               VARCHAR(20) NOT NULL,
+    status                   VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    display_text             VARCHAR(60),
+    default_position         VARCHAR(20) NOT NULL DEFAULT 'TOP_LEFT',
+    style_config             TEXT,
+    icon                     VARCHAR(255),
+    image                    VARCHAR(500),
+    icon_mobile              VARCHAR(255),
+    image_mobile             VARCHAR(500),
+    asset_meta               TEXT,
+    default_priority_weight  INTEGER NOT NULL DEFAULT 0,
+    created_id               BIGINT,
+    created_date             TIMESTAMP NOT NULL,
+    updated_id               BIGINT,
+    updated_date             TIMESTAMP,
+    deleted_id               BIGINT,
+    deleted_date             TIMESTAMP,
+    CONSTRAINT uq_badge_templates_code UNIQUE (code),
+    CONSTRAINT ck_badge_templates_type CHECK (type IN ('TEXT', 'ICON', 'IMAGE', 'MINI_BANNER')),
+    CONSTRAINT ck_badge_templates_badge_type CHECK (badge_type IN ('CAMPAIGN', 'BEST_SELLER', 'PRICE_DIFF', 'OUT_OF_STOCK', 'NEW_ARRIVAL', 'LOW_STOCK', 'PRE_ORDER')),
+    CONSTRAINT ck_badge_templates_status CHECK (status IN ('DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED')),
+    CONSTRAINT ck_badge_templates_position CHECK (default_position IN ('TOP_LEFT', 'TOP_CENTER', 'TOP_RIGHT', 'CENTER_LEFT', 'CENTER_RIGHT', 'BOTTOM_LEFT', 'BOTTOM_CENTER', 'BOTTOM_RIGHT', 'PRICE_LINE'))
 );
 
 CREATE TABLE badge_flow (
-    id           BIGINT PRIMARY KEY,
-    badge_id     BIGINT NOT NULL REFERENCES badge_templates (id) ON DELETE CASCADE,
-    rule_type    VARCHAR(20) NOT NULL,
-    rule_ref_id  BIGINT,
-    channel      VARCHAR(20) NOT NULL DEFAULT 'ALL',
-    priority     INTEGER NOT NULL DEFAULT 0,
-    active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_id   BIGINT,
-    created_date TIMESTAMP NOT NULL,
-    updated_id   BIGINT,
-    updated_date TIMESTAMP,
+    id            BIGINT PRIMARY KEY,
+    name          VARCHAR(150) NOT NULL,
+    description   VARCHAR(500),
+    status        VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    active_from   TIMESTAMP,
+    active_to     TIMESTAMP,
+    rule_type     VARCHAR(20) NOT NULL,
+    rule_config   TEXT,
+    channel       VARCHAR(20) NOT NULL DEFAULT 'ALL',
+    templates     TEXT NOT NULL,
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    updated_id    BIGINT,
+    updated_date  TIMESTAMP,
+    CONSTRAINT ck_badge_flow_status CHECK (status IN ('DRAFT', 'ACTIVE', 'INACTIVE')),
     CONSTRAINT ck_badge_flow_rule_type CHECK (rule_type IN ('MANUAL', 'ALL', 'CATEGORY', 'COLLECTION', 'PROMOTION', 'OUT_OF_STOCK')),
     CONSTRAINT ck_badge_flow_channel CHECK (channel IN ('ALL', 'WEB', 'MOBILE_WEB', 'APP'))
+);
+
+-- ===================== OTP SỐ ĐIỆN THOẠI =====================
+CREATE TABLE phone_otps (
+    id                       BIGINT PRIMARY KEY,
+    phone                    VARCHAR(20) NOT NULL,
+    purpose                  VARCHAR(20) NOT NULL,
+    code_hash                VARCHAR(64) NOT NULL,
+    expires_at               TIMESTAMP NOT NULL,
+    attempts                 INT NOT NULL DEFAULT 0,
+    verified_at              TIMESTAMP,
+    registration_token_hash  VARCHAR(64),
+    registration_expires_at  TIMESTAMP,
+    consumed_at              TIMESTAMP,
+    created_id               BIGINT,
+    created_date             TIMESTAMP NOT NULL,
+    updated_id               BIGINT,
+    updated_date             TIMESTAMP,
+    CONSTRAINT ck_phone_otps_purpose CHECK (purpose IN ('REGISTER', 'RESET_PASSWORD'))
+);
+
+-- ===================== GIỎ HÀNG & YÊU THÍCH =====================
+CREATE TABLE carts (
+    id            BIGINT PRIMARY KEY,
+    user_id       BIGINT REFERENCES users (id) ON DELETE CASCADE,
+    guest_id      VARCHAR(64),
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    updated_id    BIGINT,
+    updated_date  TIMESTAMP,
+    CONSTRAINT uq_carts_user UNIQUE (user_id),
+    CONSTRAINT uq_carts_guest UNIQUE (guest_id)
+);
+
+CREATE TABLE cart_items (
+    id            BIGINT PRIMARY KEY,
+    cart_id       BIGINT NOT NULL REFERENCES carts (id) ON DELETE CASCADE,
+    sku_id        BIGINT NOT NULL REFERENCES product_skus (id) ON DELETE CASCADE,
+    quantity      INT NOT NULL,
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    updated_id    BIGINT,
+    updated_date  TIMESTAMP,
+    CONSTRAINT uq_cart_items_cart_sku UNIQUE (cart_id, sku_id),
+    CONSTRAINT ck_cart_items_quantity CHECK (quantity >= 1)
+);
+
+CREATE TABLE wishlist_items (
+    id            BIGINT PRIMARY KEY,
+    user_id       BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    product_id    BIGINT NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    CONSTRAINT uq_wishlist_items_user_product UNIQUE (user_id, product_id)
+);
+
+CREATE TABLE banner_placements (
+    id            BIGINT PRIMARY KEY,
+    code          VARCHAR(60) NOT NULL,
+    name          VARCHAR(150) NOT NULL,
+    display_type  VARCHAR(30) NOT NULL DEFAULT 'CAROUSEL',
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    CONSTRAINT uq_banner_placements_code UNIQUE (code)
+);
+
+CREATE TABLE banners (
+    id                       BIGINT PRIMARY KEY,
+    internal_name            VARCHAR(150) NOT NULL,
+    media_url                VARCHAR(500),
+    media_mobile_url         VARCHAR(500),
+    media_link_url           VARCHAR(500),
+    media_poster_url         VARCHAR(500),
+    media_mobile_poster_url  VARCHAR(500),
+    media_fit                VARCHAR(20) NOT NULL DEFAULT 'cover',
+    media_type               VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
+    layout                   VARCHAR(20) NOT NULL DEFAULT 'CENTER',
+    title                    VARCHAR(200),
+    subtitle                 VARCHAR(300),
+    title_color              VARCHAR(30),
+    actions_layout           VARCHAR(20) NOT NULL DEFAULT 'STACK',
+    actions                  VARCHAR(4000),
+    overlay_opacity          NUMERIC(3, 2) NOT NULL DEFAULT 0,
+    status                   VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    placement_code           VARCHAR(60),
+    sort_order               INTEGER NOT NULL DEFAULT 0,
+    created_id               BIGINT,
+    created_date             TIMESTAMP NOT NULL,
+    updated_id               BIGINT,
+    updated_date             TIMESTAMP,
+    deleted_id               BIGINT,
+    deleted_date             TIMESTAMP
+);
+
+CREATE TABLE customer_requests (
+    id                          BIGINT PRIMARY KEY,
+    type                        VARCHAR(20) NOT NULL,
+    contact_channel             VARCHAR(10) NOT NULL,
+    contact_value               VARCHAR(255) NOT NULL,
+    status                      VARCHAR(20) NOT NULL DEFAULT 'NEW',
+    product_id                  BIGINT REFERENCES products (id) ON DELETE SET NULL,
+    sku_id                      BIGINT REFERENCES product_skus (id) ON DELETE SET NULL,
+    sku_code                    VARCHAR(64),
+    product_name_snapshot       VARCHAR(200),
+    product_image_url_snapshot  VARCHAR(500),
+    variant_text_snapshot       VARCHAR(300),
+    order_id                    BIGINT REFERENCES orders (id) ON DELETE SET NULL,
+    order_code                  VARCHAR(60),
+    order_type                  VARCHAR(20),
+    created_id                  BIGINT,
+    created_date                TIMESTAMP NOT NULL,
+    updated_id                  BIGINT,
+    updated_date                TIMESTAMP
+);
+
+CREATE TABLE pre_order_configs (
+    id            BIGINT PRIMARY KEY,
+    enabled       BOOLEAN NOT NULL,
+    message       VARCHAR(500),
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL
 );

@@ -9,19 +9,21 @@ import lombok.Setter;
 
 import java.util.List;
 
+/** Trang CMS cho admin theo spec FE: {id, name, slug, status, blocks}. */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CmsPageResponseDto extends BaseDto {
 
-    private Long id;
+    private String id;
+    private String name;
     private String slug;
-    private String title;
     private String status;
     private List<CmsBlockResponseDto> blocks;
 
     public static CmsPageResponseDto from(CmsPageEntity e, List<CmsBlockResponseDto> blocks) {
-        return BaseDto.of(new CmsPageResponseDto(e.getId(), e.getSlug(), e.getTitle(), e.getStatus(), blocks), e);
+        return BaseDto.of(new CmsPageResponseDto(String.valueOf(e.getId()), e.getTitle(), e.getSlug(), e.getStatus(),
+                blocks), e);
     }
 }

@@ -19,13 +19,14 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * Nền cho integration test: khởi động toàn bộ ứng dụng (H2) và gọi API qua MockMvc,
  * đi qua đầy đủ Security filter chain nên kiểm tra được 401/403 thật.
- * DB dùng chung giữa các test => mỗi test dùng email/tên duy nhất (uniqueEmail()).
+ * DB dùng chung giữa các test => mỗi test dùng SĐT/email/tên duy nhất (uniquePhone(), uniqueEmail()).
  */
 @SpringBootTest(classes = PkServiceApplication.class)
 @AutoConfigureMockMvc
@@ -39,6 +40,13 @@ public abstract class IntegrationTestBase {
     @Autowired protected UserRepo users;
     @Autowired protected RoleRepo roles;
     @Autowired protected PasswordEncoder encoder;
+
+    private static final AtomicLong PHONE_SEQ = new AtomicLong(900_000_000L);
+
+    /** SĐT chuẩn hoá duy nhất trong cả lần chạy test (0900000001, 0900000002, ...). */
+    protected String uniquePhone() {
+        return String.format("0%09d", PHONE_SEQ.incrementAndGet());
+    }
 
     protected String uniqueEmail() {
         return "user-" + UUID.randomUUID() + "@test.local";
@@ -59,26 +67,26 @@ public abstract class IntegrationTestBase {
     }
 
     /** Đăng ký khách hàng mới qua API; trả về body TokenResponseDto. */
-    protected JsonNode registerCustomer(String email) throws Exception {
+    protected JsonNode registerCustomer(String phone) throws Exception {
         return body(postJson("/api/auth/register",
-                Map.of("email", email, "password", PASSWORD, "fullName", "Test User")));
+                Map.of("phone", phone, "password", PASSWORD, "fullName", "Test User")));
     }
 
     /** Tạo trực tiếp một admin trong DB (không có API đăng ký admin) rồi đăng nhập lấy access token. */
     protected String adminAccessToken() throws Exception {
-        String email = uniqueEmail();
-        UserEntity admin = new UserEntity(email, encoder.encode(PASSWORD), "Admin Test", null);
+        String phone = uniquePhone();
+        UserEntity admin = new UserEntity(phone, encoder.encode(PASSWORD), "Admin Test");
         users.create(admin);
         RoleEntity adminRole = roles.findByName(RoleEntity.ADMIN);
         if (adminRole == null) {
             adminRole = roles.create(new RoleEntity(RoleEntity.ADMIN));
         }
         users.addRole(admin.getId(), adminRole.getId());
-        return body(postJson("/api/auth/login", Map.of("email", email, "password", PASSWORD))).get("accessToken").asText();
+        return body(postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))).get("accessToken").asText();
     }
 
     protected String customerAccessToken() throws Exception {
-        return registerCustomer(uniqueEmail()).get("accessToken").asText();
+        return registerCustomer(uniquePhone()).get("accessToken").asText();
     }
 
     protected static String bearer(String token) {

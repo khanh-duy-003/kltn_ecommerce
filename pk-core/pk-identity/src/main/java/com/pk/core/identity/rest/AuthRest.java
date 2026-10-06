@@ -42,7 +42,7 @@ public class AuthRest extends AbstractRest {
         }
     }
 
-    @PostMapping(UrlIdentConstant.Auth.BASE + "/login")
+    @PostMapping({UrlIdentConstant.Auth.BASE + "/login", UrlIdentConstant.StorefrontAuth.BASE + "/login"})
     public BaseRes login(@Valid @RequestBody LoginRequestDto request,
                           HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
@@ -64,13 +64,13 @@ public class AuthRest extends AbstractRest {
 
     /** 204 No Content: không có body nên không bọc BaseRes; lỗi (nếu có) rơi vào GlobalExceptionHandler
      * của pk-business (component-scan toàn app, xem PkServiceApplication) làm lưới an toàn. */
-    @PostMapping(UrlIdentConstant.Auth.BASE + "/logout")
+    @PostMapping({UrlIdentConstant.Auth.BASE + "/logout", UrlIdentConstant.StorefrontAuth.BASE + "/logout"})
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@Valid @RequestBody RefreshRequestDto request) {
         authService.logout(request.getRefreshToken());
     }
 
-    @GetMapping(UrlIdentConstant.Common.ME)
+    @GetMapping({UrlIdentConstant.Common.ME, UrlIdentConstant.StorefrontAuth.ME})
     public BaseRes me(@AuthenticationPrincipal SecurityUser principal,
                        HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
@@ -81,7 +81,7 @@ public class AuthRest extends AbstractRest {
     }
 
     /** Sửa hồ sơ (tên, email) - KHÔNG phải cơ chế authen, chỉ cập nhật thông tin hiển thị. */
-    @PutMapping(UrlIdentConstant.Common.ME)
+    @PutMapping({UrlIdentConstant.Common.ME, UrlIdentConstant.StorefrontAuth.ME})
     public BaseRes updateMe(@AuthenticationPrincipal SecurityUser principal,
                              @Valid @RequestBody UpdateProfileRequestDto request,
                              HttpServletRequest httpRequest, HttpServletResponse httpResponse) {

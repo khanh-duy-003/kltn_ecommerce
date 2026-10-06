@@ -90,8 +90,9 @@ public class ProductSkuEntity extends BaseEntity {
         return salePrice != null ? salePrice : listPrice;
     }
 
+    /** Tồn khả dụng, không âm (pre-order có thể làm reserved vượt onHand). */
     public int available() {
-        return onHand - reserved;
+        return Math.max(0, onHand - reserved);
     }
 
     /** OUT_OF_STOCK / LOW_STOCK (<=5) / IN_STOCK - ngưỡng tạm cố định, chưa cấu hình được. */

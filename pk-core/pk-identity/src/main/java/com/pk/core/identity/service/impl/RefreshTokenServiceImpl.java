@@ -84,6 +84,12 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         }
     }
 
+    @Transactional
+    @Override
+    public void revokeAllForUser(Long userId) {
+        repository.revokeAllByUserId(userId, new Date());
+    }
+
     private String create(UserEntity user, String familyId) {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);

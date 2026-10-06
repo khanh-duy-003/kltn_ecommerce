@@ -98,4 +98,33 @@ public class UrlAdminConstant {
         public final String STOCK_LEVELS = BASE + "/stock-levels";
         public final String ADJUSTMENTS = BASE + "/adjustments";
     }
+
+    /** AdminBannerRest (pk-api, gói api.rest.admin - spec FE nhóm Banner). Path variable {id} viết trực tiếp ở Rest.
+     * Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Banner {
+        public final String BANNERS = Common.BASE + "/banner/banners";
+    }
+
+    /** AdminCustomerRequestRest (pk-api, gói api.rest.admin - spec FE nhóm Customer Request). Sub-path /back-in-stock,
+     * /order-support, /newsletter, /{id}, /{id}/status, /status/bulk viết trực tiếp ở Rest. Thêm 2026-10-06. */
+    @UtilityClass
+    public static class CustomerRequest {
+        public final String BASE = Common.BASE + "/customer-request";
+    }
+
+    /** AdminPreOrderRest (pk-api, gói api.rest.admin - spec FE nhóm Pre-order): GET list + POST tạo cấu hình. Thêm 2026-10-06. */
+    @UtilityClass
+    public static class PreOrder {
+        public final String BASE = Common.BASE + "/pre-orders";
+    }
+
+    /** AdminAccessRest (pk-api, gói api.rest.admin - spec FE nhóm tài khoản & phân quyền): GET /admin/users, GET /admin/roles và (mở rộng ngoài
+     * spec) tạo/sửa/khoá tài khoản, gán vai trò: POST /admin/users, GET/PATCH /admin/users/{id}, PUT /admin/users/{id}/roles.
+     * Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Access {
+        public final String USERS = Common.BASE + "/users";
+        public final String ROLES = Common.BASE + "/roles";
+    }
 }

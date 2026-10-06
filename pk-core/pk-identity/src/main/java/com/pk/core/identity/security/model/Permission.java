@@ -19,6 +19,8 @@ public enum Permission {
     public static Set<Permission> forRole(String role) {
         return switch (role) {
             case "ADMIN" -> EnumSet.allOf(Permission.class);
+            case "CATALOG_MANAGER" -> EnumSet.of(PRODUCT_READ, PRODUCT_WRITE, INVENTORY_MANAGE);
+            case "ORDER_MANAGER" -> EnumSet.of(PRODUCT_READ, ORDER_MANAGE);
             case "CUSTOMER" -> EnumSet.of(PRODUCT_READ, ORDER_READ_OWN);
             default -> EnumSet.noneOf(Permission.class);
         };

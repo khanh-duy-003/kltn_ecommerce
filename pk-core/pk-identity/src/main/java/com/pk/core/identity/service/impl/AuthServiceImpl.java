@@ -8,6 +8,7 @@ import com.pk.core.identity.service.RefreshTokenService;
 
 import com.pk.core.common.exception.BusinessException;
 import com.pk.core.common.exception.ResourceNotFoundException;
+import com.pk.core.common.util.PhoneUtil;
 import com.pk.core.model.dto.request.LoginRequestDto;
 import com.pk.core.model.dto.request.RegisterRequestDto;
 import com.pk.core.model.dto.request.UpdateProfileRequestDto;
@@ -38,12 +39,18 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public TokenResponseDto register(RegisterRequestDto req) {
-        String email = normalize(req.getEmail());
-        if (users.countByEmail(email) > 0) {
+        String phone = PhoneUtil.normalize(req.getPhone());
+        if (users.countByPhone(phone) > 0) {
+            throw BusinessException.conflict(ErrorCode.PHONE_TAKEN, "Số điện thoại đã được đăng ký");
+        }
+        // Email là thông tin phụ tuỳ chọn: chỉ kiểm tra trùng khi người dùng có nhập.
+        String email = normalizeEmail(req.getEmail());
+        if (email != null && users.countByEmail(email) > 0) {
             throw BusinessException.conflict(ErrorCode.EMAIL_TAKEN, "Email đã được đăng ký");
         }
-        UserEntity user = new UserEntity(email, passwordEncoder.encode(req.getPassword()),
-                req.getFullName().trim(), req.getPhone());
+        UserEntity user = new UserEntity(phone, passwordEncoder.encode(req.getPassword()),
+                req.getFullName().trim());
+        user.setEmail(email);
         users.create(user);
         RoleEntity customer = roleOrCreate(RoleEntity.CUSTOMER);
         users.addRole(user.getId(), customer.getId());
@@ -54,10 +61,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public TokenResponseDto login(LoginRequestDto req) {
-        UserEntity user = UserRoles.attach(users.findByEmail(normalize(req.getEmail())), roles);
-        // Cùng một thông báo cho "sai email" và "sai mật khẩu" để không lộ email nào đã đăng ký.
+        UserEntity user = UserRoles.attach(users.findByPhone(PhoneUtil.normalize(req.getPhone())), roles);
+        // Cùng một thông báo cho "sai SĐT" và "sai mật khẩu" để không lộ SĐT nào đã đăng ký.
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw BusinessException.unauthorized(ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không đúng");
+            throw BusinessException.unauthorized(ErrorCode.INVALID_CREDENTIALS, "Số điện thoại hoặc mật khẩu không đúng");
         }
         if (!user.isEnabled()) {
             throw BusinessException.unauthorized(ErrorCode.ACCOUNT_DISABLED, "Tài khoản đã bị khoá");
@@ -68,17 +75,19 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public TokenResponseDto loginAdmin(LoginRequestDto req) {
-        UserEntity user = UserRoles.attach(users.findByEmail(normalize(req.getEmail())), roles);
-        // Cùng thông báo cho "sai email"/"sai mật khẩu" như login() thường - không lộ email đã đăng ký.
+        UserEntity user = UserRoles.attach(users.findByPhone(PhoneUtil.normalize(req.getPhone())), roles);
+        // Cùng thông báo cho "sai SĐT"/"sai mật khẩu" như login() thường - không lộ SĐT đã đăng ký.
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            throw BusinessException.unauthorized(ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không đúng");
+            throw BusinessException.unauthorized(ErrorCode.INVALID_CREDENTIALS, "Số điện thoại hoặc mật khẩu không đúng");
         }
         if (!user.isEnabled()) {
             throw BusinessException.unauthorized(ErrorCode.ACCOUNT_DISABLED, "Tài khoản đã bị khoá");
         }
         // Khác login() thường: bắt buộc có role ADMIN, sai thì 403 (đã xác thực đúng danh tính, chỉ
         // không đủ quyền - không dùng lại INVALID_CREDENTIALS vì đó là lỗi 401 sai danh tính).
-        if (!user.hasRole(RoleEntity.ADMIN)) {
+        // Vai trò nhân viên (ADMIN/CATALOG_MANAGER/ORDER_MANAGER) đều đăng nhập được khu quản trị; quyền vào từng
+        // nhóm API do SecurityConfig quyết định theo role.
+        if (RoleEntity.STAFF_ROLES.stream().noneMatch(user::hasRole)) {
             throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "Tài khoản không có quyền quản trị");
         }
         return tokensFor(user, refreshTokens.issue(user));
@@ -114,8 +123,9 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new ResourceNotFoundException("Người dùng", "User", userId);
         }
-        String email = normalize(req.getEmail());
-        if (!email.equals(user.getEmail()) && users.countByEmail(email) > 0) {
+        // Email tuỳ chọn: null/rỗng = xoá email đã lưu (lưu NULL, không lưu chuỗi rỗng vì cột UNIQUE).
+        String email = normalizeEmail(req.getEmail());
+        if (email != null && !email.equals(user.getEmail()) && users.countByEmail(email) > 0) {
             throw BusinessException.conflict(ErrorCode.EMAIL_TAKEN, "Email đã được đăng ký");
         }
         user.setFullName(req.getFullName().trim());
@@ -136,7 +146,11 @@ public class AuthServiceImpl implements AuthService {
         return role != null ? role : roles.create(new RoleEntity(name));
     }
 
-    private static String normalize(String email) {
+    /** Chữ thường + bỏ khoảng trắng; null hoặc rỗng => null (không có email). */
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
         return email.trim().toLowerCase(Locale.ROOT);
     }
 

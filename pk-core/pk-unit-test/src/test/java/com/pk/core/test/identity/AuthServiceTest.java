@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,36 +45,67 @@ class AuthServiceTest {
     }
 
     private UserEntity user(boolean enabled) {
-        UserEntity u = new UserEntity("a@b.com", "hashed", "An", null);
+        UserEntity u = new UserEntity("0901234567", "hashed", "An");
         u.setEnabled(enabled);
         u.getRoles().add(new RoleEntity(RoleEntity.CUSTOMER));
         return u;
     }
 
     @Test
-    void registerRejectsExistingEmail() {
-        when(users.countByEmail("a@b.com")).thenReturn(1L);
+    void registerRejectsExistingPhone() {
+        when(users.countByPhone("0901234567")).thenReturn(1L);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.register(new RegisterRequestDto("A@B.com", "password1", "An", null)));
+                () -> service.register(new RegisterRequestDto(null, "password1", "An", "0901234567")));
 
-        assertEquals("EMAIL_TAKEN", ex.getCode());
+        assertEquals("PHONE_TAKEN", ex.getCode());
         assertEquals(409, ex.getStatus());
         verify(users, never()).create(any());
     }
 
     @Test
-    void registerNormalizesEmailHashesPasswordAndAssignsCustomerRole() {
+    void registerRejectsExistingEmailWhenProvided() {
+        when(users.countByPhone("0901234567")).thenReturn(0L);
+        when(users.countByEmail("a@b.com")).thenReturn(1L);
+
+        BusinessException ex = assertThrows(BusinessException.class,
+                () -> service.register(new RegisterRequestDto("A@B.com", "password1", "An", "0901234567")));
+
+        assertEquals("EMAIL_TAKEN", ex.getCode());
+        verify(users, never()).create(any());
+    }
+
+    @Test
+    void registerWithoutEmailSkipsEmailLookupAndStoresNull() {
+        when(users.countByPhone("0901234567")).thenReturn(0L);
+        when(encoder.encode("password1")).thenReturn("hashed");
+        when(roles.findByName(RoleEntity.CUSTOMER)).thenReturn(new RoleEntity(RoleEntity.CUSTOMER));
+        when(refreshTokens.issue(any())).thenReturn("refresh-raw");
+        when(jwtProvider.issueAccessToken(any())).thenReturn(new JwtProvider.AccessToken("access", 900));
+
+        // email rỗng (chuỗi trắng) phải thành null, không được lưu chuỗi rỗng vào cột UNIQUE
+        service.register(new RegisterRequestDto("   ", "password1", "An", "0901234567"));
+
+        ArgumentCaptor<UserEntity> saved = ArgumentCaptor.forClass(UserEntity.class);
+        verify(users).create(saved.capture());
+        assertNull(saved.getValue().getEmail());
+        verify(users, never()).countByEmail(any());
+    }
+
+    @Test
+    void registerNormalizesPhoneAndEmailHashesPasswordAndAssignsCustomerRole() {
+        when(users.countByPhone("0901234567")).thenReturn(0L);
         when(users.countByEmail("a@b.com")).thenReturn(0L);
         when(encoder.encode("password1")).thenReturn("hashed");
         when(roles.findByName(RoleEntity.CUSTOMER)).thenReturn(new RoleEntity(RoleEntity.CUSTOMER));
         when(refreshTokens.issue(any())).thenReturn("refresh-raw");
         when(jwtProvider.issueAccessToken(any())).thenReturn(new JwtProvider.AccessToken("access", 900));
 
-        TokenResponseDto res = service.register(new RegisterRequestDto("  A@B.com ", "password1", " An ", null));
+        TokenResponseDto res = service.register(new RegisterRequestDto("  A@B.com ", "password1", " An ", "+84901234567"));
 
         ArgumentCaptor<UserEntity> saved = ArgumentCaptor.forClass(UserEntity.class);
         verify(users).create(saved.capture());
+        assertEquals("0901234567", saved.getValue().getPhone());
         assertEquals("a@b.com", saved.getValue().getEmail());
         assertEquals("hashed", saved.getValue().getPasswordHash());
         assertEquals("An", saved.getValue().getFullName());
@@ -83,15 +115,15 @@ class AuthServiceTest {
     }
 
     @Test
-    void loginFailsWithSameCodeForWrongPasswordAndUnknownEmail() {
-        when(users.findByEmail("a@b.com")).thenReturn(user(true));
+    void loginFailsWithSameCodeForWrongPasswordAndUnknownPhone() {
+        when(users.findByPhone("0901234567")).thenReturn(user(true));
         when(encoder.matches("wrong", "hashed")).thenReturn(false);
-        when(users.findByEmail("nobody@b.com")).thenReturn(null);
+        when(users.findByPhone("0999999999")).thenReturn(null);
 
         BusinessException wrongPw = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequestDto("a@b.com", "wrong")));
+                () -> service.login(new LoginRequestDto("0901234567", "wrong")));
         BusinessException unknown = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequestDto("nobody@b.com", "whatever")));
+                () -> service.login(new LoginRequestDto("0999999999", "whatever")));
 
         assertEquals("INVALID_CREDENTIALS", wrongPw.getCode());
         assertEquals(wrongPw.getCode(), unknown.getCode());
@@ -100,11 +132,11 @@ class AuthServiceTest {
 
     @Test
     void loginRejectsDisabledAccount() {
-        when(users.findByEmail("a@b.com")).thenReturn(user(false));
+        when(users.findByPhone("0901234567")).thenReturn(user(false));
         when(encoder.matches("password1", "hashed")).thenReturn(true);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.login(new LoginRequestDto("a@b.com", "password1")));
+                () -> service.login(new LoginRequestDto("0901234567", "password1")));
 
         assertEquals("ACCOUNT_DISABLED", ex.getCode());
     }
@@ -112,12 +144,12 @@ class AuthServiceTest {
     @Test
     void loginSucceedsWithCorrectPassword() {
         UserEntity u = user(true);
-        when(users.findByEmail("a@b.com")).thenReturn(u);
+        when(users.findByPhone("0901234567")).thenReturn(u);
         when(encoder.matches("password1", "hashed")).thenReturn(true);
         when(refreshTokens.issue(u)).thenReturn("refresh-raw");
         when(jwtProvider.issueAccessToken(u)).thenReturn(new JwtProvider.AccessToken("access", 900));
 
-        TokenResponseDto res = service.login(new LoginRequestDto("A@B.com", "password1"));
+        TokenResponseDto res = service.login(new LoginRequestDto("+84 901 234 567", "password1"));
 
         assertEquals("access", res.getAccessToken());
         assertEquals(900, res.getExpiresIn());

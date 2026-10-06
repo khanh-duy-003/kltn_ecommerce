@@ -8,11 +8,12 @@ import com.pk.core.common.web.BaseRes;
 import com.pk.core.model.constant.admin.UrlAdminConstant;
 import com.pk.core.model.dto.request.AdminBadgeFlowRequestDto;
 import com.pk.core.model.dto.request.AdminBadgeTemplateRequestDto;
+import com.pk.core.model.dto.response.MessageResponseDto;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,15 +21,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * API admin - Badge/nhãn dán sản phẩm (document/09-tong-hop-api-fe.md mục P). Gói api.rest.admin
- * (pk-api). Spec chỉ liệt kê GET/PATCH/DELETE theo id cho badge-templates (không có list/create rõ
- * ràng) và GET/POST/PUT không path variable cho badge-flow - Claude bổ khuyết list/create cho
- * templates và thêm {flowId} cho PUT flow (xem javadoc AdminBadgeTemplateRequestDto/
- * AdminBadgeFlowRequestDto + RULE-CODE.md).
+ * API admin - Badge/nhãn dán sản phẩm (spec FE nhóm "Badge - Nhãn dán"). POST trả 200 và DELETE trả 200 +
+ * {success, message} đúng spec. PUT flow nhận id trên path ({flowId}) vì spec không nói rõ sửa flow nào.
  */
 @RestController
 @RequiredArgsConstructor
@@ -39,18 +37,25 @@ public class AdminBadgeRest extends AbstractRest {
     // ---------- Badge templates ----------
 
     @GetMapping(UrlAdminConstant.Badge.TEMPLATES)
-    public BaseRes listTemplates(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public BaseRes listTemplates(@RequestParam(defaultValue = "1") int page,
+                                  @RequestParam(defaultValue = "20") int take,
+                                  @RequestParam(required = false) String status,
+                                  @RequestParam(required = false) String type,
+                                  @RequestParam(required = false) String badgeType,
+                                  @RequestParam(required = false) String defaultPosition,
+                                  HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(badgeService.findAllTemplates());
+            return restSuccessHandle.handleSuccess(
+                    badgeService.findTemplates(page, take, status, type, badgeType, defaultPosition));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
     }
 
     @PostMapping(UrlAdminConstant.Badge.TEMPLATES)
-    @ResponseStatus(HttpStatus.CREATED)
-    public BaseRes createTemplate(@Valid @RequestBody AdminBadgeTemplateRequestDto request,
-                                   HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public BaseRes createTemplate(
+            @Validated(AdminBadgeTemplateRequestDto.OnCreate.class) @RequestBody AdminBadgeTemplateRequestDto request,
+            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(badgeService.createTemplate(request));
         } catch (Exception ex) {
@@ -59,7 +64,7 @@ public class AdminBadgeRest extends AbstractRest {
     }
 
     @GetMapping(UrlAdminConstant.Badge.TEMPLATES + "/{badgeId}")
-    public BaseRes templateDetail(@PathVariable Long badgeId,
+    public BaseRes templateDetail(@PathVariable String badgeId,
                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(badgeService.findTemplateById(badgeId));
@@ -69,7 +74,8 @@ public class AdminBadgeRest extends AbstractRest {
     }
 
     @PatchMapping(UrlAdminConstant.Badge.TEMPLATES + "/{badgeId}")
-    public BaseRes updateTemplate(@PathVariable Long badgeId, @Valid @RequestBody AdminBadgeTemplateRequestDto request,
+    public BaseRes updateTemplate(@PathVariable String badgeId,
+                                   @Valid @RequestBody AdminBadgeTemplateRequestDto request,
                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(badgeService.updateTemplate(badgeId, request));
@@ -79,24 +85,31 @@ public class AdminBadgeRest extends AbstractRest {
     }
 
     @DeleteMapping(UrlAdminConstant.Badge.TEMPLATES + "/{badgeId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteTemplate(@PathVariable Long badgeId) {
-        badgeService.deleteTemplate(badgeId);
+    public BaseRes deleteTemplate(@PathVariable String badgeId,
+                                   HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            badgeService.deleteTemplate(badgeId);
+            return restSuccessHandle.handleSuccess(MessageResponseDto.ok("Đã xóa mẫu nhãn."));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
     }
 
     // ---------- Badge flow ----------
 
     @GetMapping(UrlAdminConstant.Badge.FLOW)
-    public BaseRes listFlows(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+    public BaseRes listFlows(@RequestParam(defaultValue = "1") int page,
+                              @RequestParam(defaultValue = "20") int take,
+                              @RequestParam(required = false) String status,
+                              HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(badgeService.findAllFlows());
+            return restSuccessHandle.handleSuccess(badgeService.findFlows(page, take, status));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
     }
 
     @PostMapping(UrlAdminConstant.Badge.FLOW)
-    @ResponseStatus(HttpStatus.CREATED)
     public BaseRes createFlow(@Valid @RequestBody AdminBadgeFlowRequestDto request,
                                HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
@@ -107,7 +120,7 @@ public class AdminBadgeRest extends AbstractRest {
     }
 
     @PutMapping(UrlAdminConstant.Badge.FLOW + "/{flowId}")
-    public BaseRes updateFlow(@PathVariable Long flowId, @Valid @RequestBody AdminBadgeFlowRequestDto request,
+    public BaseRes updateFlow(@PathVariable String flowId, @Valid @RequestBody AdminBadgeFlowRequestDto request,
                                HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(badgeService.updateFlow(flowId, request));

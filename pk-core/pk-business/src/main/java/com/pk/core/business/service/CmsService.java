@@ -4,6 +4,7 @@ import com.pk.core.model.dto.request.AdminCmsBlockRequestDto;
 import com.pk.core.model.dto.request.AdminCmsPageRequestDto;
 import com.pk.core.model.dto.response.CmsBlockResponseDto;
 import com.pk.core.model.dto.response.CmsPageResponseDto;
+import com.pk.core.model.dto.response.CmsStorefrontPageResponseDto;
 
 import java.util.List;
 
@@ -13,6 +14,10 @@ public interface CmsService {
     List<CmsPageResponseDto> findAllPages();
 
     CmsPageResponseDto findPageById(Long pageId);
+
+    /** GET /storefront/cms/pages/{slug} (công khai) - trang CMS theo slug kèm blocks (theo sortOrder). CHỈ trả trang
+     * PUBLISHED và chưa xoá mềm; DRAFT/không có -> 404 (không lộ trang chưa xuất bản). Thêm 2026-10-06. */
+    CmsStorefrontPageResponseDto findPublishedBySlug(String slug);
 
     /** POST /admin/cms/pages - tạo page, seed blocks ban đầu nếu request.blocks != null. */
     CmsPageResponseDto createPage(AdminCmsPageRequestDto req);

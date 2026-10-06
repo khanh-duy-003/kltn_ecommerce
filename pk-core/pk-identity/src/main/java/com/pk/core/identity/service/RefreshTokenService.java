@@ -15,4 +15,7 @@ public interface RefreshTokenService {
     Rotation rotate(String rawToken);
 
     void revoke(String rawToken);
+
+    /** Thu hồi mọi refresh token của user (mọi thiết bị) - dùng khi đặt lại mật khẩu để phiên cũ không refresh được nữa. */
+    void revokeAllForUser(Long userId);
 }

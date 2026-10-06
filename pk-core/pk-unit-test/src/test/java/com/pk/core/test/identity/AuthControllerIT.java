@@ -15,50 +15,90 @@ class AuthControllerIT extends IntegrationTestBase {
 
     @Test
     void registerReturns201WithTokensAndCustomerRole() throws Exception {
+        String phone = uniquePhone();
         String email = uniqueEmail();
-        postJson("/api/auth/register", Map.of("email", email, "password", PASSWORD, "fullName", "An"))
+        postJson("/api/auth/register", Map.of("phone", phone, "email", email, "password", PASSWORD, "fullName", "An"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.user.phone").value(phone))
                 .andExpect(jsonPath("$.data.user.email").value(email))
                 .andExpect(jsonPath("$.data.user.roles", hasItem("CUSTOMER")));
     }
 
     @Test
+    void registerWithoutEmailIsAllowed() throws Exception {
+        String phone = uniquePhone();
+        postJson("/api/auth/register", Map.of("phone", phone, "password", PASSWORD, "fullName", "An"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.user.phone").value(phone));
+    }
+
+    @Test
+    void registerDuplicatePhoneReturns409EvenInInternationalFormat() throws Exception {
+        String phone = uniquePhone();
+        registerCustomer(phone);
+
+        // cùng một số nhưng viết dạng +84: phải bị coi là trùng
+        String international = "+84" + phone.substring(1);
+        postJson("/api/auth/register", Map.of("phone", international, "password", PASSWORD, "fullName", "Dup"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errors[0].code").value("PHONE_TAKEN"));
+    }
+
+    @Test
     void registerDuplicateEmailReturns409EvenWithDifferentCase() throws Exception {
         String email = uniqueEmail();
-        registerCustomer(email);
+        postJson("/api/auth/register", Map.of("phone", uniquePhone(), "email", email, "password", PASSWORD, "fullName", "An"))
+                .andExpect(status().isCreated());
 
-        postJson("/api/auth/register", Map.of("email", email.toUpperCase(), "password", PASSWORD, "fullName", "Dup"))
+        postJson("/api/auth/register", Map.of("phone", uniquePhone(), "email", email.toUpperCase(), "password", PASSWORD, "fullName", "Dup"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errors[0].code").value("EMAIL_TAKEN"));
     }
 
     @Test
     void registerWithInvalidBodyReturns400WithFieldErrors() throws Exception {
-        postJson("/api/auth/register", Map.of("email", "not-an-email", "password", "123", "fullName", "An"))
+        postJson("/api/auth/register", Map.of("phone", "abc", "email", "not-an-email", "password", "123", "fullName", "An"))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field=='phone')]").exists())
                 .andExpect(jsonPath("$.errors[?(@.field=='email')]").exists())
                 .andExpect(jsonPath("$.errors[?(@.field=='password')]").exists());
     }
 
     @Test
-    void loginWithCorrectPasswordReturnsTokens() throws Exception {
-        String email = uniqueEmail();
-        registerCustomer(email);
+    void registerWithoutPhoneReturns400() throws Exception {
+        postJson("/api/auth/register", Map.of("email", uniqueEmail(), "password", PASSWORD, "fullName", "An"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[?(@.field=='phone')]").exists());
+    }
 
-        postJson("/api/auth/login", Map.of("email", email, "password", PASSWORD))
+    @Test
+    void loginWithCorrectPasswordReturnsTokens() throws Exception {
+        String phone = uniquePhone();
+        registerCustomer(phone);
+
+        postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
     }
 
     @Test
-    void loginWithWrongPasswordReturns401() throws Exception {
-        String email = uniqueEmail();
-        registerCustomer(email);
+    void loginAcceptsInternationalPhoneFormat() throws Exception {
+        String phone = uniquePhone();
+        registerCustomer(phone);
 
-        postJson("/api/auth/login", Map.of("email", email, "password", "WrongPassword1"))
+        postJson("/api/auth/login", Map.of("phone", "+84" + phone.substring(1), "password", PASSWORD))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void loginWithWrongPasswordReturns401() throws Exception {
+        String phone = uniquePhone();
+        registerCustomer(phone);
+
+        postJson("/api/auth/login", Map.of("phone", phone, "password", "WrongPassword1"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors[0].code").value("INVALID_CREDENTIALS"));
     }
@@ -78,18 +118,18 @@ class AuthControllerIT extends IntegrationTestBase {
 
     @Test
     void meWithValidTokenReturnsProfile() throws Exception {
-        String email = uniqueEmail();
-        String token = registerCustomer(email).get("accessToken").asText();
+        String phone = uniquePhone();
+        String token = registerCustomer(phone).get("accessToken").asText();
 
         mvc.perform(get("/api/me").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.email").value(email))
+                .andExpect(jsonPath("$.data.phone").value(phone))
                 .andExpect(jsonPath("$.data.roles", hasItem("CUSTOMER")));
     }
 
     @Test
     void refreshRotatesTokenAndOldTokenIsRejected() throws Exception {
-        String first = registerCustomer(uniqueEmail()).get("refreshToken").asText();
+        String first = registerCustomer(uniquePhone()).get("refreshToken").asText();
 
         JsonNode rotated = body(postJson("/api/auth/refresh", Map.of("refreshToken", first))
                 .andExpect(status().isOk())
@@ -115,7 +155,7 @@ class AuthControllerIT extends IntegrationTestBase {
 
     @Test
     void logoutRevokesRefreshToken() throws Exception {
-        String refresh = registerCustomer(uniqueEmail()).get("refreshToken").asText();
+        String refresh = registerCustomer(uniquePhone()).get("refreshToken").asText();
 
         postJson("/api/auth/logout", Map.of("refreshToken", refresh)).andExpect(status().isNoContent());
 

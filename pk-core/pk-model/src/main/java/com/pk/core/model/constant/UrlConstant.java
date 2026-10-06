@@ -85,4 +85,48 @@ public class UrlConstant {
     public static class Badge {
         public final String BASE = Storefront.BASE + "/badge";
     }
+
+    /** CartRest (pk-api) - giỏ hàng theo spec FE (/storefront/cart/cart, đúng 2 lần "cart" như spec).
+     * Công khai cho khách vãng lai (định danh bằng header X-Guest-Cart-Id); riêng {@code /merge} bắt buộc
+     * đăng nhập (xem SecurityConfig). Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Cart {
+        public final String BASE = Storefront.BASE + "/cart/cart";
+    }
+
+    /** WishlistRest (pk-api) - yêu thích theo spec FE (/storefront/product/customer/wishlist), bắt buộc
+     * đăng nhập (xem SecurityConfig: rule authenticated đặt TRƯỚC rule GET công khai của Product.BASE).
+     * Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Wishlist {
+        public final String BASE = Product.BASE + "/customer/wishlist";
+    }
+
+    /** CmsRest (pk-api) - trang CMS đã PUBLISHED theo slug (/storefront/cms/pages/{slug}), công khai. Sub-path
+     * {slug} viết trực tiếp ở Rest. Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Cms {
+        public final String PAGES = Storefront.BASE + "/cms/pages";
+    }
+
+    /** BannerRest (pk-api) - render banner theo mã vị trí (/storefront/banner/placements/code/{code}/render), công
+     * khai. Thêm 2026-10-06. */
+    @UtilityClass
+    public static class Banner {
+        public final String PLACEMENTS_BY_CODE = Storefront.BASE + "/banner/placements/code";
+    }
+
+    /** PreOrderRest (pk-api) - khách xem cấu hình đặt trước đang hiệu lực (enabled/message), công khai. Mở rộng ngoài
+     * spec FE để client biết khi nào cho đặt SKU hết hàng. */
+    @UtilityClass
+    public static class PreOrder {
+        public final String CURRENT = Storefront.BASE + "/pre-order";
+    }
+
+    /** CustomerRequestRest (pk-api) - khách gửi yêu cầu (báo khi có hàng, hỗ trợ đơn, đăng ký nhận tin), công khai
+     * (POST). Sub-path /back-in-stock, /order-support, /newsletter viết trực tiếp ở Rest. Thêm 2026-10-06. */
+    @UtilityClass
+    public static class CustomerRequest {
+        public final String BASE = Storefront.BASE + "/customer-request";
+    }
 }

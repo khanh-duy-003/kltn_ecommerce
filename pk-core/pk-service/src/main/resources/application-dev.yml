@@ -30,6 +30,10 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,https://jewelry-ecommerce-client.vercel.app}
   seed:
     enabled: ${SEED_ENABLED:false}
+  otp:
+    # Chỉ để dev/demo (chưa tích hợp SMS): đặt OTP_FIXED_CODE=123456 để mọi OTP đều là mã đó; để trống = mã ngẫu nhiên
+    # ghi vào log (xem LogOtpSender). KHÔNG đặt ở môi trường thật.
+    fixed-code: ${OTP_FIXED_CODE:}
 
 management:
   endpoints:

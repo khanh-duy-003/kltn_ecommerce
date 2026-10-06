@@ -26,7 +26,11 @@ public class UserEntity extends BaseEntity {
     @Column(name = "id")
     private Long id;
 
-    /** Luôn lưu chữ thường. */
+    /** Định danh đăng nhập: SĐT chuẩn hoá 10 số bắt đầu bằng 0 (PhoneUtil.normalize), UNIQUE, bắt buộc. */
+    @Column(name = "phone")
+    private String phone;
+
+    /** Thông tin phụ TUỲ CHỌN (có thể null), không dùng để đăng nhập. Có giá trị thì luôn chữ thường, UNIQUE. */
     @Column(name = "email")
     private String email;
 
@@ -36,9 +40,6 @@ public class UserEntity extends BaseEntity {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "phone")
-    private String phone;
-
     @Column(name = "enabled")
     private boolean enabled = true;
 
@@ -46,11 +47,13 @@ public class UserEntity extends BaseEntity {
     @Transient
     private Set<RoleEntity> roles = new HashSet<>();
 
-    public UserEntity(String email, String passwordHash, String fullName, String phone) {
-        this.email = email;
+    /** email không nhận ở constructor (tuỳ chọn): gán bằng setEmail khi có. 3 tham số cố ý khác bản cũ
+     * 4 tham số (email, hash, tên, phone) để chỗ nào còn gọi kiểu cũ sẽ lỗi biên dịch thay vì lặng lẽ
+     * nhét nhầm giá trị (cả 4 đều là String). */
+    public UserEntity(String phone, String passwordHash, String fullName) {
+        this.phone = phone;
         this.passwordHash = passwordHash;
         this.fullName = fullName;
-        this.phone = phone;
     }
 
     public boolean hasRole(String roleName) {

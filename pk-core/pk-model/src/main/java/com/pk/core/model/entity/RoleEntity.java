@@ -19,6 +19,15 @@ public class RoleEntity extends CreateEntity {
 
     public static final String ADMIN = "ADMIN";
     public static final String CUSTOMER = "CUSTOMER";
+    /** Nhân viên quản lý danh mục/nội dung (sản phẩm, khuyến mãi, CMS, banner, badge). */
+    public static final String CATALOG_MANAGER = "CATALOG_MANAGER";
+    /** Nhân viên quản lý đơn hàng/kho/khách hàng/yêu cầu khách. */
+    public static final String ORDER_MANAGER = "ORDER_MANAGER";
+    /** Các vai trò nhân viên được vào khu quản trị (ADMIN có toàn quyền). */
+    public static final java.util.Set<String> STAFF_ROLES = java.util.Set.of(ADMIN, CATALOG_MANAGER, ORDER_MANAGER);
+    /** Các vai trò mà admin được gán cho tài khoản. */
+    public static final java.util.Set<String> ASSIGNABLE_ROLES = java.util.Set.of(ADMIN, CATALOG_MANAGER, ORDER_MANAGER,
+            CUSTOMER);
 
     @Id
     @PrimaryKey(generationType = GenerationType.SEQUENCE, generator = "roles_id_seq")

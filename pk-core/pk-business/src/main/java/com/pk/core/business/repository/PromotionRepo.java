@@ -4,6 +4,7 @@ import com.pk.core.model.entity.PromotionEntity;
 import org.springframework.data.repository.query.Param;
 import vn.com.unit.springframework.data.mirage.repository.query.Modifying;
 
+import java.util.Date;
 import java.util.List;
 
 public interface PromotionRepo extends PkRepo<PromotionEntity, Long> {
@@ -12,6 +13,9 @@ public interface PromotionRepo extends PkRepo<PromotionEntity, Long> {
      * method dưới đây thao tác trực tiếp bảng nối, đặt ở đây (repo của bảng "chủ") thay vì tạo repo
      * riêng cho bảng nối (1 interface repo trống nghĩa không extends PkRepo sẽ KHÔNG được
      * @EnableMirageRepositories nhận diện - đã thử và sửa lại theo đúng tiền lệ UserRepo). */
+    /** Các khuyến mãi PUBLISHED, chưa xoá mềm, đang trong thời hạn tại `now` và áp cho `productId`. */
+    List<PromotionEntity> findActiveByProductId(@Param("productId") Long productId, @Param("now") Date now);
+
     List<Long> findProductIdsByPromotionId(@Param("promotionId") Long promotionId);
 
     @Modifying

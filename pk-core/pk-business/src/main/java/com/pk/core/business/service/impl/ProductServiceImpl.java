@@ -7,6 +7,7 @@ import com.pk.core.business.repository.CollectionRepo;
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.repository.ProductSkuRepo;
 import com.pk.core.business.service.ProductService;
+import com.pk.core.business.service.PromotionPricingService;
 import com.pk.core.common.exception.BusinessException;
 import com.pk.core.common.exception.ErrorCode;
 import com.pk.core.common.exception.ResourceNotFoundException;
@@ -47,6 +48,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSkuRepo productSkus;
     private final CategoryRepo categories;
     private final CollectionRepo collections;
+    private final PromotionPricingService promotionPricing;
 
     @Transactional(readOnly = true)
     @Override
@@ -95,12 +97,23 @@ public class ProductServiceImpl implements ProductService {
         List<ProductSkuEntity> publishedSkuEntities = productSkus.findByProductId(p.getId()).stream()
                 .filter(sku -> ProductSkuEntity.PUBLISHED.equals(sku.getStatus()))
                 .toList();
+        // Giá storefront đã trừ khuyến mãi sản phẩm (PromotionPricingService) để khớp giá giỏ/checkout:
+        // khi có khuyến mãi, salePrice của SKU = giá sau khuyến mãi; listPrice giữ nguyên làm giá gạch.
         List<ProductSkuResponseDto> publishedSkus = publishedSkuEntities.stream()
-                .map(ProductSkuResponseDto::from)
+                .map(sku -> {
+                    ProductSkuResponseDto dto = ProductSkuResponseDto.from(sku);
+                    BigDecimal price = sku.effectivePrice();
+                    BigDecimal discount = price == null ? BigDecimal.ZERO
+                            : promotionPricing.unitDiscount(p.getId(), price);
+                    if (discount.signum() > 0) {
+                        dto.setSalePrice(price.subtract(discount));
+                    }
+                    return dto;
+                })
                 .toList();
 
-        BigDecimal priceFrom = publishedSkuEntities.stream()
-                .map(ProductSkuEntity::effectivePrice)
+        BigDecimal priceFrom = publishedSkus.stream()
+                .map(dto -> dto.getSalePrice() != null ? dto.getSalePrice() : dto.getListPrice())
                 .filter(Objects::nonNull)
                 .min(Comparator.naturalOrder())
                 // Không có SKU nào đang bán (lệch dữ liệu) -> tạm lấy basePrice để không trả null.

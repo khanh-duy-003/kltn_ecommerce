@@ -1,35 +1,46 @@
 package com.pk.core.model.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Body cho POST/PUT /admin/badge-flow(/{flowId}) (mục P spec). Spec không có path variable cho PUT
- * ("PUT /admin/badge-flow") nhưng badge_flow là bảng NHIỀU dòng (1 badge có thể nhiều luật) nên PUT
- * cần biết sửa dòng nào - Claude THÊM {flowId} vào path PUT (xem RULE-CODE.md mục "Badge admin - bổ
- * khuyết spec thiếu"), cùng tinh thần các PUT .../{id} khác trong dự án. `ruleType`/`channel` là 1
- * trong các hằng BadgeFlowEntity.RULE_CHANNEL_* (validate ở service, không dùng @Pattern để khỏi
- * lặp danh sách giá trị 2 chỗ). */
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+/** Body tạo (POST /admin/badge-flow) và thay thế (PUT /admin/badge-flow/{flowId}) luồng hiển thị nhãn theo spec FE. */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBadgeFlowRequestDto {
 
-    @NotNull(message = "badgeId không được để trống")
-    private Long badgeId;
+    @NotBlank(message = "Tên luồng không được để trống")
+    @Size(max = 150)
+    private String name;
+
+    @Size(max = 500)
+    private String description;
+
+    private Date activeFrom;
+
+    private Date activeTo;
+
+    private String status;
 
     @NotBlank(message = "ruleType không được để trống")
     private String ruleType;
 
-    private Long ruleRefId;
+    private Map<String, Object> ruleConfig;
 
     private String channel;
 
-    private int priority;
-
-    private boolean active = true;
+    @NotEmpty(message = "Phải chọn ít nhất 1 mẫu nhãn")
+    @Valid
+    private List<BadgeFlowTemplateRefDto> templates;
 }

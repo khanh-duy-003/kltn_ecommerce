@@ -10,6 +10,8 @@ import com.pk.core.business.repository.PaymentRepo;
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.repository.ProductSkuRepo;
 import com.pk.core.business.service.OrderService;
+import com.pk.core.business.service.PromotionPricingService;
+import com.pk.core.business.service.PreOrderService;
 import com.pk.core.business.service.VoucherService;
 import com.pk.core.common.exception.BusinessException;
 import com.pk.core.common.exception.ErrorCode;
@@ -54,6 +56,8 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepo products;
     private final ProductSkuRepo productSkus;
     private final VoucherService voucherService;
+    private final PromotionPricingService promotionPricing;
+    private final PreOrderService preOrder;
 
     @Transactional
     @Override
@@ -71,6 +75,8 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItemEntity> itemEntities = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal productDiscount = BigDecimal.ZERO;
+        boolean hasPreOrderLine = false;
         // Mỗi lần reserveStock/tạo dòng hàng đều nằm trong transaction này: nếu 1 SKU giữa chừng
         // không đủ hàng và ném exception, Spring sẽ rollback TOÀN BỘ (kể cả các reserveStock đã chạy
         // trước đó trong vòng lặp) - không cần tự tay nhả lại tồn kho ở đây.
@@ -82,7 +88,14 @@ public class OrderServiceImpl implements OrderService {
             if (sku == null || !ProductSkuEntity.PUBLISHED.equals(sku.getStatus())) {
                 throw new ResourceNotFoundException("Sản phẩm", "ProductSku", skuId);
             }
-            if (productSkus.reserveStock(skuId, qty) == 0) {
+            // Đặt trước đang bật và SKU đang hết hàng: nhận đơn đặt trước (reserved vượt on_hand, available âm).
+            boolean preOrderLine = sku.available() <= 0 && preOrder.isEnabled();
+            int reserved = preOrderLine ? productSkus.reservePreOrderStock(skuId, qty)
+                    : productSkus.reserveStock(skuId, qty);
+            if (preOrderLine && reserved > 0) {
+                hasPreOrderLine = true;
+            }
+            if (reserved == 0) {
                 // args khớp placeholder {0} của messages_vi/en (INSUFFICIENT_STOCK) - available() đọc
                 // TRƯỚC lần reserveStock vừa thất bại nên chỉ mang tính tham khảo (có thể vừa đổi do
                 // request khác), đủ tốt cho thông báo UX, không cần chính xác tuyệt đối tức thời.
@@ -97,21 +110,24 @@ public class OrderServiceImpl implements OrderService {
                     product != null ? product.getName() : sku.getName(),
                     product != null ? product.getThumbnailUrl() : null, qty, unitPrice));
             subtotal = subtotal.add(unitPrice.multiply(BigDecimal.valueOf(qty)));
+            productDiscount = productDiscount.add(
+                    promotionPricing.unitDiscount(sku.getProductId(), unitPrice).multiply(BigDecimal.valueOf(qty)));
         }
 
         VoucherEntity voucher = null;
         BigDecimal voucherDiscount = BigDecimal.ZERO;
         String appliedVoucherCode = null;
         if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
-            voucher = voucherService.validate(req.getVoucherCode(), subtotal);
-            voucherDiscount = voucher.computeDiscount(subtotal);
+            BigDecimal payable = subtotal.subtract(productDiscount);
+            voucher = voucherService.validate(req.getVoucherCode(), payable);
+            voucherDiscount = voucher.computeDiscount(payable);
             appliedVoucherCode = voucher.getCode();
         }
 
-        // CHƯA tính phí ship (chưa có bảng phí theo phương thức/khu vực) và CHƯA áp khuyến mãi sản
-        // phẩm (domain Promotion chưa làm) - cả 2 để 0, cố ý deferred (xem OrderService javadoc).
+        // Khuyến mãi sản phẩm đã áp (PromotionPricingService); CHƯA tính phí ship (chưa có bảng phí theo
+        // phương thức/khu vực) nên để 0.
         OrderEntity order = new OrderEntity(userId, req.getPaymentMethod(), req.getShippingMethod(), address,
-                subtotal, BigDecimal.ZERO, voucherDiscount, BigDecimal.ZERO, appliedVoucherCode, req.getNote());
+                subtotal, productDiscount, voucherDiscount, BigDecimal.ZERO, appliedVoucherCode, req.getNote());
         orders.create(order);
 
         for (OrderItemEntity item : itemEntities) {
@@ -120,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         orderTimelines.create(new OrderTimelineEntity(order.getId(), OrderEntity.PENDING,
-                "Đơn hàng được tạo", "CUSTOMER"));
+                hasPreOrderLine ? "Đơn hàng được tạo (có sản phẩm đặt trước)" : "Đơn hàng được tạo", "CUSTOMER"));
 
         if (voucher != null) {
             voucherService.applyUsage(voucher.getId(), voucher.getCode());

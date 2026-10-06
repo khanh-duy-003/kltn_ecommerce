@@ -23,4 +23,13 @@ public class UrlIdentConstant {
     public static class Auth {
         public final String BASE = UrlConstant.Common.BASE + "/auth";
     }
+
+    /** StorefrontAuthRest: luồng SĐT + OTP theo spec FE (/storefront/auth/...), thêm 2026-10-06. Tách khỏi
+     * {@link Auth} (/api/auth/...) để không đổi route cũ. */
+    @UtilityClass
+    public static class StorefrontAuth {
+        public final String BASE = UrlConstant.Storefront.BASE + "/auth";
+        /** Đường dẫn "thông tin tôi" theo spec FE (/storefront/me) - alias của Common.ME (/api/me), cùng handler. */
+        public final String ME = UrlConstant.Storefront.BASE + "/me";
+    }
 }

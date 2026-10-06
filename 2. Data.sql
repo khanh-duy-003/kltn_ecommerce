@@ -1,33 +1,46 @@
 -- =====================================================================================
--- pk-core / KLTN - DỮ LIỆU MẪU (chạy SAU 11-tao-bang.sql, trên schema rỗng)
+-- pk-core / KLTN - DỮ LIỆU MẪU (chạy SAU "1. Table.sql", trên schema rỗng)
 -- =====================================================================================
 -- Dùng subquery theo khóa tự nhiên (email/code/slug/sku_code/name) để lấy id thay vì ghi cứng
 -- số - an toàn dù bảng đang có id GENERATED AS IDENTITY bắt đầu từ đâu. Tôn trọng đúng mọi
--- CHECK constraint thật trong 11-tao-bang.sql (status enum, giá >= 0, reserved <= on_hand,
+-- CHECK constraint thật trong "1. Table.sql" (status enum, giá >= 0, reserved <= on_hand,
 -- published_at bắt buộc khi status=PUBLISHED, ends_at > starts_at...).
 --
+-- ĐĂNG NHẬP BẰNG SỐ ĐIỆN THOẠI (email chỉ là thông tin phụ). Tài khoản demo, mật khẩu chung Test@1234:
+--   0901234567  Quản trị viên (ADMIN)      - đăng nhập trang admin: POST /api/admin/auth/login
+--   0912345678  Nguyễn Thị Lan (CUSTOMER)
+--   0923456789  Trần Văn Minh  (CUSTOMER)
+--   0934567890  Phạm Thị Hoa   (CUSTOMER)
+--   0945678901  Nhân viên sản phẩm (CATALOG_MANAGER) - sản phẩm/khuyến mãi/CMS/banner/badge
+--   0956789012  Nhân viên đơn hàng (ORDER_MANAGER)   - đơn hàng/kho/khách hàng/yêu cầu khách
 -- Mật khẩu đăng nhập demo cho TẤT CẢ user bên dưới: Test@1234
 -- (password_hash là BCrypt thật, strength 10, khớp đúng BCryptPasswordEncoder() mặc định mà
 -- SecurityConfig của project đang dùng - nghĩa là có thể đăng nhập thật bằng các tài khoản này).
 --
--- Chạy: psql -U postgres -d kltn_ecommerce -f 12-du-lieu-mau.sql
+-- Chạy: psql -U postgres -d kltn_ecommerce -f "2. Data.sql"
 -- =====================================================================================
 
 BEGIN;
 
 -- ===================== IDENTITY =====================
-INSERT INTO roles (name) VALUES ('ADMIN'), ('CUSTOMER');
+INSERT INTO roles (name) VALUES ('ADMIN'), ('CUSTOMER'), ('CATALOG_MANAGER'), ('ORDER_MANAGER');
 
-INSERT INTO users (email, password_hash, full_name, phone, enabled) VALUES
-    ('admin@pkjewelry.vn',  '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Quản trị viên',     '0901234567', TRUE),
-    ('lan.nguyen@gmail.com','$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Nguyễn Thị Lan',    '0912345678', TRUE),
-    ('minh.tran@gmail.com', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Trần Văn Minh',     '0923456789', TRUE),
-    ('hoa.pham@gmail.com',  '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Phạm Thị Hoa',      '0934567890', TRUE);
+INSERT INTO users (phone, email, password_hash, full_name, enabled) VALUES
+    ('0901234567', 'admin@pkjewelry.vn', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Quản trị viên', TRUE),
+    ('0912345678', 'lan.nguyen@gmail.com', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Nguyễn Thị Lan', TRUE),
+    ('0923456789', 'minh.tran@gmail.com', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Trần Văn Minh', TRUE),
+    ('0934567890', 'hoa.pham@gmail.com', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Phạm Thị Hoa', TRUE),
+    ('0945678901', 'catalog@pkjewelry.vn', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Nhân viên sản phẩm', TRUE),
+    ('0956789012', 'orders@pkjewelry.vn', '$2b$10$vvpsrB3Gg5cI73JTIzUQve.gR3tWn0KoBOabK8UKCXEpwtj0p6M.2', 'Nhân viên đơn hàng', TRUE);
 
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'admin@pkjewelry.vn' AND r.name = 'ADMIN';
 INSERT INTO user_roles (user_id, role_id)
 SELECT u.id, r.id FROM users u, roles r WHERE u.email IN ('lan.nguyen@gmail.com','minh.tran@gmail.com','hoa.pham@gmail.com') AND r.name = 'CUSTOMER';
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'catalog@pkjewelry.vn' AND r.name = 'CATALOG_MANAGER';
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id FROM users u, roles r WHERE u.email = 'orders@pkjewelry.vn' AND r.name = 'ORDER_MANAGER';
 
 -- ===================== ĐỊA CHỈ GIAO HÀNG =====================
 INSERT INTO customer_addresses (user_id, recipient_name, phone, province, district, ward, address_line, is_default)
@@ -222,25 +235,53 @@ INSERT INTO cms_pages (slug, title, status) VALUES
     ('khuyen-mai',  'Khuyến mãi', 'DRAFT');
 
 INSERT INTO cms_blocks (page_id, type, sort_order, data)
-SELECT id, 'BANNER', 1, '{"imageUrl":"/banners/spring-2026.jpg","link":"/collections/mua-xuan-2026"}' FROM cms_pages WHERE slug = 'trang-chu';
+SELECT id, 'BANNER', 1, '{"placementCode":"HOME_HERO","layout":"SLIDER"}' FROM cms_pages WHERE slug = 'trang-chu';
 INSERT INTO cms_blocks (page_id, type, sort_order, data)
-SELECT id, 'PRODUCT_CAROUSEL', 2, '{"title":"Bán chạy","collectionSlug":"ban-chay"}' FROM cms_pages WHERE slug = 'trang-chu';
+SELECT id, 'PRODUCT_CAROUSEL', 2, '{"header":{"title":"Bán chạy"},"collectionSlug":"ban-chay"}' FROM cms_pages WHERE slug = 'trang-chu';
 INSERT INTO cms_blocks (page_id, type, sort_order, data)
-SELECT id, 'HERO', 1, '{"title":"Trang sức PK - Tinh xảo từng chi tiết"}' FROM cms_pages WHERE slug = 'gioi-thieu';
+SELECT id, 'INFO_CARDS', 1, '{"cards":[{"title":"Trang sức PK","description":"Tinh xảo từng chi tiết"}]}' FROM cms_pages WHERE slug = 'gioi-thieu';
 
 -- ===================== BADGE =====================
-INSERT INTO badge_templates (name, label_text, color) VALUES
-    ('Mới',       'NEW',  '#22c55e'),
-    ('Bán chạy',  'HOT',  '#f97316'),
-    ('Giảm giá',  'SALE', '#ef4444');
+-- Quy tắc hiển thị storefront (mỗi SKU 1 nhãn): PRE_ORDER -> OUT_OF_STOCK -> CAMPAIGN (flow đang ACTIVE).
+INSERT INTO badge_templates (name, code, description, type, badge_type, status, display_text, default_position, style_config, default_priority_weight) VALUES
+    ('Đặt trước',   'PRE_ORDER',    'Sản phẩm hết hàng nhưng đang mở đặt trước', 'TEXT', 'PRE_ORDER',    'ACTIVE', 'Đặt trước',  'TOP_LEFT',  '{"shape":"PILL","backgroundColor":"#7c3aed","textColor":"#FFFFFF","fontSize":12}', 30),
+    ('Hết hàng',    'OUT_OF_STOCK', 'Sản phẩm tạm hết hàng',                     'TEXT', 'OUT_OF_STOCK', 'ACTIVE', 'Hết hàng',   'TOP_LEFT',  '{"shape":"PILL","backgroundColor":"#6b7280","textColor":"#FFFFFF","fontSize":12}', 20),
+    ('Khuyến mãi',  'SALE',         'Sản phẩm đang khuyến mãi',                  'TEXT', 'CAMPAIGN',     'ACTIVE', 'Giảm giá',   'TOP_RIGHT', '{"shape":"PILL","backgroundColor":"#ef4444","textColor":"#FFFFFF","fontSize":12}', 10),
+    ('Hàng mới',    'NEW_ARRIVAL',  'Sản phẩm mới ra mắt',                       'TEXT', 'NEW_ARRIVAL',  'ACTIVE', 'Mới',        'TOP_LEFT',  '{"shape":"PILL","backgroundColor":"#B8860B","textColor":"#FFFFFF","fontSize":12}', 5),
+    ('Bán chạy',    'BEST_SELLER',  'Sản phẩm bán chạy',                         'TEXT', 'BEST_SELLER',  'ACTIVE', 'Bán chạy',   'TOP_LEFT',  '{"shape":"ROUNDED","backgroundColor":"#f97316","textColor":"#FFFFFF","fontSize":12}', 5);
 
-INSERT INTO badge_flow (badge_id, rule_type, rule_ref_id, channel, priority, active)
-SELECT bt.id, 'CATEGORY', c.id, 'ALL', 1, TRUE FROM badge_templates bt, categories c WHERE bt.name = 'Mới' AND c.slug = 'nhan';
-INSERT INTO badge_flow (badge_id, rule_type, rule_ref_id, channel, priority, active)
-SELECT bt.id, 'COLLECTION', col.id, 'ALL', 2, TRUE FROM badge_templates bt, collections col WHERE bt.name = 'Bán chạy' AND col.slug = 'ban-chay';
-INSERT INTO badge_flow (badge_id, rule_type, rule_ref_id, channel, priority, active)
-SELECT bt.id, 'PROMOTION', pr.id, 'ALL', 3, TRUE FROM badge_templates bt, promotions pr WHERE bt.name = 'Giảm giá' AND pr.name = 'Khuyến mãi vàng tháng 10';
-INSERT INTO badge_flow (badge_id, rule_type, rule_ref_id, channel, priority, active)
-SELECT bt.id, 'OUT_OF_STOCK', NULL, 'ALL', 0, TRUE FROM badge_templates bt WHERE bt.name = 'Bán chạy';
+INSERT INTO badge_flow (name, description, status, rule_type, rule_config, channel, templates)
+SELECT 'Nhãn sản phẩm hết hàng / đặt trước', 'Áp theo tồn kho: hết hàng + đang mở pre-order -> Đặt trước, ngược lại -> Hết hàng', 'ACTIVE', 'OUT_OF_STOCK', NULL, 'ALL',
+       '[{"badgeTemplateId":"' || (SELECT id FROM badge_templates WHERE code = 'PRE_ORDER') || '","priorityWeight":30,"isPinned":false},'
+    || '{"badgeTemplateId":"' || (SELECT id FROM badge_templates WHERE code = 'OUT_OF_STOCK') || '","priorityWeight":20,"isPinned":false}]';
+
+INSERT INTO badge_flow (name, description, status, rule_type, rule_config, channel, templates)
+SELECT 'Nhãn sản phẩm khuyến mãi', 'Sản phẩm thuộc chương trình khuyến mãi đang chạy', 'ACTIVE', 'PROMOTION', NULL, 'ALL',
+       '[{"badgeTemplateId":"' || (SELECT id FROM badge_templates WHERE code = 'SALE') || '","priorityWeight":10,"isPinned":false}]';
+
+INSERT INTO badge_flow (name, description, status, rule_type, rule_config, channel, templates)
+SELECT 'Nhãn nhẫn mới', 'Danh mục Nhẫn hiển thị nhãn Hàng mới', 'ACTIVE', 'CATEGORY', '{"categoryIds":["' || c.id || '"]}', 'ALL',
+       '[{"badgeTemplateId":"' || (SELECT id FROM badge_templates WHERE code = 'NEW_ARRIVAL') || '","priorityWeight":5,"isPinned":false}]'
+  FROM categories c WHERE c.slug = 'nhan';
+
+INSERT INTO badge_flow (name, description, status, rule_type, rule_config, channel, templates)
+SELECT 'Nhãn bộ sưu tập bán chạy', 'Collection Bán chạy hiển thị nhãn Bán chạy', 'ACTIVE', 'COLLECTION', '{"collectionIds":["' || col.id || '"]}', 'ALL',
+       '[{"badgeTemplateId":"' || (SELECT id FROM badge_templates WHERE code = 'BEST_SELLER') || '","priorityWeight":5,"isPinned":false}]'
+  FROM collections col WHERE col.slug = 'ban-chay';
+
+-- ===================== BANNER =====================
+INSERT INTO banner_placements (code, name, display_type) VALUES
+    ('HOME_HERO',    'Banner chính trang chủ',      'CAROUSEL'),
+    ('HOME_PROMO',   'Khuyến mãi trang chủ',        'GRID'),
+    ('CATEGORY_TOP', 'Đầu trang danh mục sản phẩm', 'SINGLE')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO banners (internal_name, media_url, media_type, layout, title, subtitle, title_color, actions_layout, actions, overlay_opacity, status, placement_code, sort_order) VALUES
+    ('Hero - Bộ sưu tập thu đông', 'https://example.com/banners/hero-1.jpg', 'IMAGE', 'LEFT_CENTER', 'Bộ sưu tập thu đông', 'Trang sức vàng 18K tinh xảo', '#ffffff', 'INLINE',
+     '[{"actionType":"COLLECTION","actionTarget":"ban-chay","ctaText":"Khám phá ngay","ctaBg":"#b8860b","ctaColor":"#ffffff"}]', 0.25, 'ACTIVE', 'HOME_HERO', 1),
+    ('Hero - Nhẫn cưới', 'https://example.com/banners/hero-2.jpg', 'IMAGE', 'CENTER', 'Nhẫn cưới trọn đời', 'Ưu đãi đến 15%', '#ffffff', 'STACK',
+     '[{"actionType":"CATEGORY","actionTarget":"nhan","ctaText":"Xem nhẫn","ctaBg":"#111111","ctaColor":"#ffffff"}]', 0.30, 'ACTIVE', 'HOME_HERO', 2),
+    ('Promo - Khuyến mãi vàng', 'https://example.com/banners/promo-1.jpg', 'IMAGE', 'CENTER_BOTTOM', 'Khuyến mãi vàng tháng 10', NULL, '#ffffff', 'STACK',
+     '[{"actionType":"URL","actionTarget":"/khuyen-mai","ctaText":"Mua ngay"}]', 0, 'DRAFT', 'HOME_PROMO', 1);
 
 COMMIT;

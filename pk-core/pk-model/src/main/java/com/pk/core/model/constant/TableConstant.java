@@ -9,6 +9,13 @@ public final class TableConstant {
     public static final String ROLES = "roles";
     public static final String USERS = "users";
     public static final String REFRESH_TOKENS = "refresh_tokens";
+    // OTP gửi tới SĐT cho đăng ký / quên mật khẩu (V4__phone_otps.sql, mới 2026-10-06)
+    public static final String PHONE_OTPS = "phone_otps";
+
+    // Giỏ hàng và yêu thích (V5__cart_wishlist.sql, mới 2026-10-06)
+    public static final String CARTS = "carts";
+    public static final String CART_ITEMS = "cart_items";
+    public static final String WISHLIST_ITEMS = "wishlist_items";
 
     // Địa chỉ
     public static final String CUSTOMER_ADDRESSES = "customer_addresses";
@@ -41,6 +48,16 @@ public final class TableConstant {
     // Admin - Badge (V2__admin_extensions.sql, mới 2026-09-29, chưa có entity, để sẵn hằng)
     public static final String BADGE_TEMPLATES = "badge_templates";
     public static final String BADGE_FLOW = "badge_flow";
+
+    // Banner (V6__banners.sql, 2026-10-06)
+    public static final String BANNERS = "banners";
+    public static final String BANNER_PLACEMENTS = "banner_placements";
+
+    // Yêu cầu khách hàng (V7__customer_requests.sql, 2026-10-06)
+    public static final String CUSTOMER_REQUESTS = "customer_requests";
+
+    // Cấu hình đặt trước (V8__pre_order_configs.sql, 2026-10-06)
+    public static final String PRE_ORDER_CONFIGS = "pre_order_configs";
 
     private TableConstant() {
     }

@@ -56,6 +56,12 @@ public class BusinessException extends RuntimeException {
         return new BusinessException(422, code, message, args);
     }
 
+    /** 429: gọi quá nhanh/quá nhiều lần (VD gửi lại OTP trước hết khoảng chờ, nhập sai OTP quá số lần) -
+     * thêm 2026-10-06 cho luồng OTP (spec FE ghi 429 ở send-otp). */
+    public static BusinessException tooManyRequests(String code, String message, Object... args) {
+        return new BusinessException(429, code, message, args);
+    }
+
     public int getStatus() {
         return status;
     }

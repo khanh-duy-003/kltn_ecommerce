@@ -27,7 +27,7 @@ public class JwtPrincipalConverter implements Converter<Jwt, AbstractAuthenticat
         if (perms != null) {
             perms.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
         }
-        SecurityUser principal = new SecurityUser(Long.valueOf(jwt.getSubject()), jwt.getClaimAsString("email"), authorities);
+        SecurityUser principal = new SecurityUser(Long.valueOf(jwt.getSubject()), jwt.getClaimAsString("phone"), authorities);
         return new UsernamePasswordAuthenticationToken(principal, jwt.getTokenValue(), authorities);
     }
 }

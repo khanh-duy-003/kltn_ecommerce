@@ -16,4 +16,8 @@ public interface RefreshTokenRepo extends PkRepo<RefreshTokenEntity, Long> {
     /** Thu hồi mọi token chưa thu hồi của một family; trả về số dòng bị ảnh hưởng. */
     @Modifying
     int revokeFamily(@Param("familyId") String familyId, @Param("now") Date now);
+
+    /** Thu hồi mọi refresh token chưa thu hồi của một user (mọi thiết bị) - dùng khi đặt lại mật khẩu. */
+    @Modifying
+    int revokeAllByUserId(@Param("userId") Long userId, @Param("now") Date now);
 }

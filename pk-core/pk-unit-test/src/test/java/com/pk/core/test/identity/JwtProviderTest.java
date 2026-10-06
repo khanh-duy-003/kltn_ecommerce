@@ -36,7 +36,7 @@ class JwtProviderTest {
         props.setIssuer("pk-core-test");
         key = new KeyConfig().rsaKey(props); // không cấu hình khoá => sinh khoá tạm
         config = new JwtConfig();
-        user = new UserEntity("a@b.com", "hash", "A", null);
+        user = new UserEntity("0901234567", "hash", "A");
         ReflectionTestUtils.setField(user, "id", 42L);
         user.getRoles().add(new RoleEntity(RoleEntity.ADMIN));
     }
@@ -51,7 +51,7 @@ class JwtProviderTest {
         Jwt jwt = config.jwtDecoder(key, props).decode(at.token());
 
         assertEquals("42", jwt.getSubject());
-        assertEquals("a@b.com", jwt.getClaimAsString("email"));
+        assertEquals("0901234567", jwt.getClaimAsString("phone"));
         assertTrue(jwt.getClaimAsStringList("roles").contains("ADMIN"));
         assertTrue(jwt.getClaimAsStringList("perms").contains("PRODUCT_WRITE"));
         assertEquals(props.getAccessTokenMinutes() * 60, at.expiresInSeconds());

@@ -6,6 +6,8 @@ import com.pk.core.business.repository.CustomerAddressRepo;
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.repository.ProductSkuRepo;
 import com.pk.core.business.service.CheckoutService;
+import com.pk.core.business.service.PromotionPricingService;
+import com.pk.core.business.service.PreOrderService;
 import com.pk.core.business.service.VoucherService;
 import com.pk.core.common.exception.BusinessException;
 import com.pk.core.common.exception.ErrorCode;
@@ -38,6 +40,8 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final ProductRepo products;
     private final ProductSkuRepo productSkus;
     private final VoucherService voucherService;
+    private final PromotionPricingService promotionPricing;
+    private final PreOrderService preOrder;
 
     @Transactional(readOnly = true)
     @Override
@@ -54,6 +58,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         List<OrderItemResponseDto> items = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal productDiscount = BigDecimal.ZERO;
         int itemCount = 0;
         for (Map.Entry<Long, Integer> line : qtyBySku.entrySet()) {
             Long skuId = line.getKey();
@@ -63,7 +68,9 @@ public class CheckoutServiceImpl implements CheckoutService {
             if (sku == null || !ProductSkuEntity.PUBLISHED.equals(sku.getStatus())) {
                 throw new ResourceNotFoundException("Sản phẩm", "ProductSku", skuId);
             }
-            if (sku.available() < qty) {
+            // Đặt trước đang bật thì SKU HẾT HÀNG vẫn báo giá được (đơn đặt trước).
+            boolean preOrderLine = sku.available() <= 0 && preOrder.isEnabled();
+            if (sku.available() < qty && !preOrderLine) {
                 throw BusinessException.badRequest(ErrorCode.INSUFFICIENT_STOCK,
                         "Sản phẩm \"" + sku.getName() + "\" không đủ hàng, chỉ còn " + sku.available(),
                         sku.available());
@@ -76,19 +83,21 @@ public class CheckoutServiceImpl implements CheckoutService {
                     product != null ? product.getThumbnailUrl() : null, qty, unitPrice,
                     unitPrice.multiply(BigDecimal.valueOf(qty))));
             subtotal = subtotal.add(unitPrice.multiply(BigDecimal.valueOf(qty)));
+            productDiscount = productDiscount.add(
+                    promotionPricing.unitDiscount(sku.getProductId(), unitPrice).multiply(BigDecimal.valueOf(qty)));
             itemCount += qty;
         }
 
         BigDecimal voucherDiscount = BigDecimal.ZERO;
         if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
-            VoucherEntity voucher = voucherService.validate(req.getVoucherCode(), subtotal);
-            voucherDiscount = voucher.computeDiscount(subtotal);
+            // Voucher tính trên phần còn lại sau khi đã trừ khuyến mãi sản phẩm.
+            BigDecimal payable = subtotal.subtract(productDiscount);
+            VoucherEntity voucher = voucherService.validate(req.getVoucherCode(), payable);
+            voucherDiscount = voucher.computeDiscount(payable);
         }
 
-        // CHƯA có bảng phí ship theo phương thức/khu vực và CHƯA có domain Promotion - giống
-        // OrderServiceImpl.create, để 0 (xem javadoc CheckoutService/OrderService).
+        // CHƯA có bảng phí ship theo phương thức/khu vực - giống OrderServiceImpl.create, để 0.
         BigDecimal shippingFee = BigDecimal.ZERO;
-        BigDecimal productDiscount = BigDecimal.ZERO;
         BigDecimal grandTotal = subtotal.subtract(productDiscount).subtract(voucherDiscount).add(shippingFee);
 
         QuoteSummaryResponseDto summary = new QuoteSummaryResponseDto(subtotal, productDiscount, voucherDiscount,

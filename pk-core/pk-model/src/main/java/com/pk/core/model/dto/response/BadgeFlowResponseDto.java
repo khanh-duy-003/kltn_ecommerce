@@ -1,37 +1,31 @@
 package com.pk.core.model.dto.response;
 
-import com.pk.core.common.dto.UpdateDto;
-import com.pk.core.model.entity.BadgeFlowEntity;
+import com.pk.core.model.dto.request.BadgeFlowTemplateRefDto;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** extends UpdateDto (không phải BaseDto) - khớp BadgeFlowEntity extends UpdateEntity (bảng
- * badge_flow không có deleted_id/deleted_date), gọi tay copyAudit() giống ProductAttributeResponseDto/
- * CmsBlockResponseDto. */
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+/** Luồng hiển thị nhãn theo spec FE; `isActive` = ACTIVE và đang trong khoảng activeFrom-activeTo. */
 @Getter
 @Setter
 @NoArgsConstructor
-public class BadgeFlowResponseDto extends UpdateDto {
+@AllArgsConstructor
+public class BadgeFlowResponseDto {
 
-    private Long id;
-    private Long badgeId;
+    private String id;
+    private String name;
+    private String description;
+    private String status;
+    private Boolean isActive;
+    private Date activeFrom;
+    private Date activeTo;
     private String ruleType;
-    private Long ruleRefId;
+    private Map<String, Object> ruleConfig;
     private String channel;
-    private int priority;
-    private boolean active;
-
-    public static BadgeFlowResponseDto from(BadgeFlowEntity e) {
-        BadgeFlowResponseDto dto = new BadgeFlowResponseDto();
-        dto.setId(e.getId());
-        dto.setBadgeId(e.getBadgeId());
-        dto.setRuleType(e.getRuleType());
-        dto.setRuleRefId(e.getRuleRefId());
-        dto.setChannel(e.getChannel());
-        dto.setPriority(e.getPriority());
-        dto.setActive(e.isActive());
-        dto.copyAudit(e);
-        return dto;
-    }
+    private List<BadgeFlowTemplateRefDto> templates;
 }

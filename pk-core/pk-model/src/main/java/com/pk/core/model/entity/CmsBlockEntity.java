@@ -11,11 +11,11 @@ import vn.com.unit.miragesql.miragesql.annotation.PrimaryKey;
 import vn.com.unit.miragesql.miragesql.annotation.PrimaryKey.GenerationType;
 import vn.com.unit.miragesql.miragesql.annotation.Table;
 
-/** Khối nội dung trong 1 trang CMS (BANNER/PRODUCT_CAROUSEL/HERO - Admin mục O). Bảng `cms_blocks`
- * KHÔNG có deleted_id/deleted_date nên extends UpdateEntity - xoá block là HARD delete (xem
- * CmsServiceImpl.deleteBlock()), khác CmsPageEntity. `data` lưu CHUỖI thô (JSON do FE tự đóng gói,
- * VARCHAR(4000)) - Java KHÔNG parse/validate cấu trúc bên trong, cùng kiểu "lưu thô, FE tự diễn giải"
- * như ProductAttributeEntity.options. */
+/** Khối nội dung trong 1 trang CMS (spec FE: BANNER, PRODUCT_CAROUSEL, PRODUCT_LIST, INFO_CARDS, IMAGE_GALLERY, ...). Bảng
+ * `cms_blocks` KHÔNG có deleted_id/deleted_date nên extends UpdateEntity - xoá block là HARD delete (xem
+ * CmsServiceImpl.deleteBlock()), khác CmsPageEntity. `data` lưu `config` của block dạng chuỗi JSON (TEXT); service
+ * (de)serialize và kiểm tra cấu trúc cho các loại BANNER/PRODUCT_CAROUSEL. `targetSegment` là phân khúc khách mục
+ * tiêu (CHƯA lọc theo phân khúc ở storefront - chỉ lưu và trả lại). */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -24,7 +24,12 @@ public class CmsBlockEntity extends UpdateEntity {
 
     public static final String BANNER = "BANNER";
     public static final String PRODUCT_CAROUSEL = "PRODUCT_CAROUSEL";
-    public static final String HERO = "HERO";
+    public static final String INFO_CARDS = "INFO_CARDS";
+    public static final String IMAGE_GALLERY = "IMAGE_GALLERY";
+
+    public static final java.util.Set<String> TYPES = java.util.Set.of(BANNER, PRODUCT_CAROUSEL, "PRODUCT_LIST",
+            INFO_CARDS, IMAGE_GALLERY, "PRODUCT_CATEGORY_NAV", "PRODUCT_COLLECTION_SHOWCASE",
+            "PRODUCT_EXPANDABLE_DESCRIPTION");
 
     @Id
     @PrimaryKey(generationType = GenerationType.SEQUENCE, generator = "cms_blocks_id_seq")
@@ -43,10 +48,14 @@ public class CmsBlockEntity extends UpdateEntity {
     @Column(name = "data")
     private String data;
 
-    public CmsBlockEntity(Long pageId, String type, int sortOrder, String data) {
+    @Column(name = "target_segment")
+    private String targetSegment;
+
+    public CmsBlockEntity(Long pageId, String type, int sortOrder, String data, String targetSegment) {
         this.pageId = pageId;
         this.type = type;
         this.sortOrder = sortOrder;
         this.data = data;
+        this.targetSegment = targetSegment;
     }
 }

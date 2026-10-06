@@ -24,6 +24,11 @@ public interface ProductSkuRepo extends PkRepo<ProductSkuEntity, Long> {
     @Modifying
     int reserveStock(@Param("skuId") Long skuId, @Param("qty") int qty);
 
+    /** Giữ chỗ cho ĐƠN ĐẶT TRƯỚC: chỉ khi SKU đang hết hàng (on_hand - reserved <= 0), tăng reserved bất chấp vượt
+     * on_hand (available âm = số lượng đang nợ khách). Trả 0 nếu SKU vừa có hàng trở lại (gọi lại reserveStock). */
+    @Modifying
+    int reservePreOrderStock(@Param("skuId") Long skuId, @Param("qty") int qty);
+
     /** Nhả `qty` đơn vị đã giữ chỗ (reserved -= qty, không âm) - gọi khi huỷ đơn. */
     @Modifying
     int releaseStock(@Param("skuId") Long skuId, @Param("qty") int qty);

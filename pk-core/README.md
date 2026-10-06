@@ -21,8 +21,8 @@
 ## 2. Chạy PostgreSQL
 
 - Tạo database kltn_ecommerce
-- Chạy file tạo bảng sql: 11-tao-bang.sql
-- Chạy file tạo dữ liệu sql: 12-du-lieu-mau.sql
+- Chạy file tạo bảng sql: 1. Table.sql
+- Chạy file tạo dữ liệu sql: 2. Data.sql
 
 ## 3. Chạy ứng dụng (dev, có dữ liệu demo)
 

@@ -12,8 +12,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LoginRequestDto {
 
+    /** Số điện thoại đăng nhập (chấp nhận 0xxxxxxxxx, 84xxxxxxxxx, +84xxxxxxxxx - service tự chuẩn hoá). */
     @NotBlank
-    private String email;
+    private String phone;
 
     @NotBlank
     private String password;

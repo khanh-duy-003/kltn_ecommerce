@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Nhãn dán sản phẩm theo danh sách SKU - KHÔNG cần đăng nhập (permitAll ở SecurityConfig). Xem cảnh
- * báo ở BadgeService javadoc: suy ra tự động từ tồn kho/ngày publish, KHÔNG phải hệ thống admin cấu
- * hình được như spec. */
+/** Nhãn dán theo danh sách SKU - KHÔNG cần đăng nhập (permitAll ở SecurityConfig). Đọc cấu hình badge-template/
+ * badge-flow do admin tạo, quy tắc PRE_ORDER -> OUT_OF_STOCK -> CAMPAIGN, mỗi SKU tối đa 1 nhãn (xem BadgeService).
+ * `channel` (mặc định WEB) là tham số mở rộng ngoài spec để lọc flow theo kênh. */
 @RestController
 @RequiredArgsConstructor
 public class BadgeRest extends AbstractRest {
@@ -24,10 +24,11 @@ public class BadgeRest extends AbstractRest {
     private final BadgeService badgeService;
 
     @GetMapping(UrlConstant.Badge.BASE)
-    public BaseRes forSkus(@RequestParam List<Long> skuIds,
+    public BaseRes forSkus(@RequestParam(required = false) List<String> skuIds,
+                            @RequestParam(required = false) String channel,
                             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(badgeService.forSkus(skuIds));
+            return restSuccessHandle.handleSuccess(badgeService.forSkus(skuIds, channel));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

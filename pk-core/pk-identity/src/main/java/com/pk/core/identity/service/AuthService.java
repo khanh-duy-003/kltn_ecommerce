@@ -13,8 +13,8 @@ public interface AuthService {
     TokenResponseDto login(LoginRequestDto req);
 
     /** Đăng nhập ADMIN (POST /admin/auth/login, gói api.rest.admin trong pk-api - xem AdminAuthRest). Kiểm tra
-     * email/mật khẩu giống {@link #login(LoginRequestDto)}, THÊM bước bắt buộc role ADMIN: nếu tài
-     * khoản đúng email/mật khẩu nhưng không có role ADMIN thì ném 403 FORBIDDEN (không phải 401, vì
+     * SĐT/mật khẩu giống {@link #login(LoginRequestDto)}, THÊM bước bắt buộc role ADMIN: nếu tài
+     * khoản đúng SĐT/mật khẩu nhưng không có role ADMIN thì ném 403 FORBIDDEN (không phải 401, vì
      * danh tính đã xác thực đúng, chỉ là không đủ quyền). Thêm 2026-09-29 theo rule "admin tách
      * riêng hoàn toàn" - xem RULE-CODE.md. */
     TokenResponseDto loginAdmin(LoginRequestDto req);

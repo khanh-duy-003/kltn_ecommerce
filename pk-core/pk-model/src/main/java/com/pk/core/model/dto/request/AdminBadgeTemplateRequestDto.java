@@ -1,27 +1,68 @@
 package com.pk.core.model.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.groups.Default;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Body cho POST/PATCH /admin/badge-templates(/{badgeId}) (mục P spec). Spec chỉ liệt kê GET/PATCH/
- * DELETE theo id (không có POST list/create rõ ràng) - Claude THÊM GET(list)/POST(create) hợp lý vì
- * phải có cách tạo mẫu nhãn trước khi sửa/xoá được (xem RULE-CODE.md mục "Badge admin - bổ khuyết
- * spec thiếu"). PATCH dùng chung DTO này, coi như cập nhật toàn bộ field (không phải partial patch
- * thật sự - cùng cách các PUT khác trong dự án). */
+import java.util.Map;
+
+/**
+ * Body tạo (POST) và cập nhật một phần (PATCH) mẫu nhãn. Tạo dùng nhóm {@link OnCreate} (bắt buộc name, code, type,
+ * badgeType); PATCH dùng nhóm mặc định - field null thì giữ nguyên, riêng code/status KHÔNG sửa qua PATCH (spec) và
+ * các field mobile/assetMeta/icon/defaultPriorityWeight chỉ ghi lúc tạo.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBadgeTemplateRequestDto {
 
-    @NotBlank(message = "Tên mẫu nhãn không được để trống")
+    public interface OnCreate extends Default {
+    }
+
+    @NotBlank(groups = OnCreate.class)
+    @Size(max = 120)
     private String name;
 
-    @NotBlank(message = "Nội dung nhãn không được để trống")
-    private String labelText;
+    @NotBlank(groups = OnCreate.class)
+    @Size(max = 60)
+    private String code;
 
-    private String color;
+    @Size(max = 500)
+    private String description;
+
+    @NotBlank(groups = OnCreate.class)
+    private String type;
+
+    @NotBlank(groups = OnCreate.class)
+    private String badgeType;
+
+    private String status;
+
+    @Size(max = 60)
+    private String displayText;
+
+    private String defaultPosition;
+
+    private Map<String, Object> styleConfig;
+
+    @Size(max = 255)
+    private String icon;
+
+    @Size(max = 500)
+    private String image;
+
+    @Size(max = 255)
+    private String iconMobile;
+
+    @Size(max = 500)
+    private String imageMobile;
+
+    private Map<String, Object> assetMeta;
+
+    private Integer defaultPriorityWeight;
 }

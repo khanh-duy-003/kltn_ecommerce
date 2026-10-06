@@ -1,24 +1,30 @@
 package com.pk.core.model.dto.response;
 
-import com.pk.core.common.dto.BaseDto;
-import com.pk.core.model.entity.BadgeTemplateEntity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Map;
+
+/** Mẫu nhãn theo spec FE (id là chuỗi). Dùng cho admin và cho phần `badges` của GET /storefront/badge. */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BadgeTemplateResponseDto extends BaseDto {
+public class BadgeTemplateResponseDto {
 
-    private Long id;
+    private String id;
     private String name;
-    private String labelText;
-    private String color;
-
-    public static BadgeTemplateResponseDto from(BadgeTemplateEntity e) {
-        return BaseDto.of(new BadgeTemplateResponseDto(e.getId(), e.getName(), e.getLabelText(), e.getColor()), e);
-    }
+    private String code;
+    private String description;
+    private String type;
+    private String badgeType;
+    private String status;
+    private String displayText;
+    private String defaultPosition;
+    private Map<String, Object> styleConfig;
+    private String icon;
+    private String image;
+    private int defaultPriorityWeight;
 }

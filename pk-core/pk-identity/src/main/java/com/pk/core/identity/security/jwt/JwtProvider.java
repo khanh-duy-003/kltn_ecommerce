@@ -42,7 +42,7 @@ public class JwtProvider {
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .subject(String.valueOf(user.getId()))
-                .claim("email", user.getEmail())
+                .claim("phone", user.getPhone())
                 .claim("roles", roles)
                 .claim("perms", perms)
                 .build();

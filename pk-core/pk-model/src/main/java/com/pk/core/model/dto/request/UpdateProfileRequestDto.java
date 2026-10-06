@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /** Body cho PUT /api/me (sửa hồ sơ - KHÔNG phải authen, chỉ đổi tên/email; đổi mật khẩu vẫn thuộc
- * phạm vi authen nên chưa làm). */
+ * phạm vi authen nên chưa làm). SĐT không đổi ở đây vì là định danh đăng nhập - đổi SĐT cần xác thực
+ * OTP (chưa làm). Email tuỳ chọn: bỏ trống/null = xoá email đã lưu. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,7 +21,6 @@ public class UpdateProfileRequestDto {
     @Size(max = 120)
     private String fullName;
 
-    @NotBlank
     @Email
     @Size(max = 254)
     private String email;
