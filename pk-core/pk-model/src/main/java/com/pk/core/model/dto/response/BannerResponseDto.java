@@ -1,5 +1,6 @@
 package com.pk.core.model.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pk.core.model.entity.BannerEntity;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -45,5 +46,57 @@ public class BannerResponseDto {
                 e.getActionsLayout(), actions,
                 e.getOverlayOpacity() == null ? null : e.getOverlayOpacity().doubleValue(),
                 e.getStatus(), e.getPlacementCode(), e.getSortOrder());
+    }
+
+    // ---- FE BannerItem (snake_case): field tính toán, giữ nguyên field camelCase cũ ----
+
+    @JsonProperty("internal_name")
+    public String getInternalNameSnake() {
+        return internalName;
+    }
+
+    @JsonProperty("media_type")
+    public String getMediaTypeSnake() {
+        return mediaType;
+    }
+
+    @JsonProperty("media_url")
+    public String getMediaUrlSnake() {
+        return mediaUrl;
+    }
+
+    @JsonProperty("media_mobile_url")
+    public String getMediaMobileUrlSnake() {
+        return mediaMobileUrl != null ? mediaMobileUrl : mediaUrl;
+    }
+
+    @JsonProperty("media_poster_url")
+    public String getMediaPosterUrlSnake() {
+        return mediaPosterUrl;
+    }
+
+    @JsonProperty("media_mobile_poster_url")
+    public String getMediaMobilePosterUrlSnake() {
+        return mediaMobilePosterUrl;
+    }
+
+    @JsonProperty("media_link_url")
+    public String getMediaLinkUrlSnake() {
+        return mediaLinkUrl;
+    }
+
+    @JsonProperty("title_color")
+    public String getTitleColorSnake() {
+        return titleColor;
+    }
+
+    @JsonProperty("actions_layout")
+    public String getActionsLayoutSnake() {
+        return actionsLayout;
+    }
+
+    @JsonProperty("overlay_opacity")
+    public Double getOverlayOpacitySnake() {
+        return overlayOpacity == null ? Double.valueOf(0) : overlayOpacity;
     }
 }

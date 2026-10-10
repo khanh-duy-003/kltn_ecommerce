@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pk.core.business.repository.CmsBlockRepo;
 import com.pk.core.business.repository.CmsPageRepo;
+import com.pk.core.business.repository.CollectionRepo;
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.service.BannerService;
 import com.pk.core.business.service.CmsService;
@@ -24,6 +25,7 @@ import com.pk.core.model.dto.response.CmsStorefrontBlockResponseDto;
 import com.pk.core.model.dto.response.CmsStorefrontPageResponseDto;
 import com.pk.core.model.dto.response.ProductResponseDto;
 import com.pk.core.model.entity.CmsBlockEntity;
+import com.pk.core.model.entity.CollectionEntity;
 import com.pk.core.model.entity.CmsPageEntity;
 import com.pk.core.model.entity.ProductEntity;
 import org.springframework.data.domain.Sort;
@@ -54,6 +56,7 @@ public class CmsServiceImpl implements CmsService {
     private final BannerService bannerService;
     private final ProductService productService;
     private final ProductRepo products;
+    private final CollectionRepo collections;
 
     // ============================== Admin ==============================
 
@@ -230,7 +233,7 @@ public class CmsServiceImpl implements CmsService {
         };
     }
 
-    /** Admin FE lưu nguồn dữ liệu carousel ở config.dataSource.{productIds|collectionSlug}; ưu tiên khóa cấp trên cùng nếu có. */
+    /** Admin FE lưu nguồn dữ liệu carousel ở config.dataSource.{filterType,...}; khóa legacy cấp trên cùng vẫn được đọc. */
     private static Object carouselValue(Map<String, Object> config, String key) {
         Object v = config.get(key);
         if (v == null && config.get("dataSource") instanceof Map<?, ?> ds) {
@@ -239,20 +242,83 @@ public class CmsServiceImpl implements CmsService {
         return v;
     }
 
-    private Map<String, Object> resolveCarousel(Map<String, Object> config) {
-        List<ProductResponseDto> list = new ArrayList<>();
-        Object ids = carouselValue(config, "productIds");
-        if (ids instanceof List<?> items) {
+    private static String carouselFilterType(Map<String, Object> config) {
+        String t = text(carouselValue(config, "filterType"));
+        return t == null ? null : t.toUpperCase(Locale.ROOT);
+    }
+
+    /** categorySlugs[] (+ categoryId, FE dùng làm slug đầu tiên), không trùng, giữ thứ tự. */
+    private static List<String> carouselCategorySlugs(Map<String, Object> config) {
+        java.util.LinkedHashSet<String> slugs = new java.util.LinkedHashSet<>();
+        if (carouselValue(config, "categorySlugs") instanceof List<?> items) {
             for (Object item : items) {
-                ProductResponseDto p = findProduct(item);
-                if (p != null) {
-                    list.add(p);
+                String t = text(item);
+                if (t != null) {
+                    slugs.add(t);
                 }
             }
-        } else if (text(carouselValue(config, "collectionSlug")) != null) {
-            list.addAll(productService.search(null, text(carouselValue(config, "collectionSlug")), null, null, null, null,
-                    "NEWEST", 1, carouselLimit(config)).content());
         }
+        String legacy = text(carouselValue(config, "categoryId"));
+        if (legacy != null) {
+            slugs.add(legacy);
+        }
+        return new ArrayList<>(slugs);
+    }
+
+    /** collectionSlug, hoặc collectionId (id số -> tra slug; không phải số thì coi là slug). */
+    private String carouselCollectionSlug(Map<String, Object> config) {
+        String slug = text(carouselValue(config, "collectionSlug"));
+        if (slug != null) {
+            return slug;
+        }
+        String id = text(carouselValue(config, "collectionId"));
+        if (id == null) {
+            return null;
+        }
+        try {
+            CollectionEntity c = collections.findOne(Long.valueOf(id));
+            return c == null ? null : c.getSlug();
+        } catch (NumberFormatException ex) {
+            return id;
+        }
+    }
+
+    private Map<String, Object> resolveCarousel(Map<String, Object> config) {
+        List<ProductResponseDto> list = new ArrayList<>();
+        int limit = carouselLimit(config);
+        String filterType = carouselFilterType(config);
+        Object ids = carouselValue(config, "productIds");
+        if (filterType == null || "MANUAL_PRODUCTS".equals(filterType)) {
+            // Legacy (không có filterType): productIds hoặc collectionSlug.
+            if (ids instanceof List<?> items) {
+                for (Object item : items) {
+                    ProductResponseDto p = findProduct(item);
+                    if (p != null) {
+                        list.add(p);
+                    }
+                }
+            } else if (filterType == null && carouselCollectionSlug(config) != null) {
+                list.addAll(productService.search(null, carouselCollectionSlug(config), null, null, null, null,
+                        "NEWEST", 1, limit).content());
+            }
+        } else if ("COLLECTION".equals(filterType)) {
+            String slug = carouselCollectionSlug(config);
+            if (slug != null) {
+                list.addAll(productService.search(null, slug, null, null, null, null, "NEWEST", 1, limit).content());
+            }
+        } else if ("CATEGORY".equals(filterType)) {
+            java.util.Set<Long> seen = new java.util.HashSet<>();
+            for (String slug : carouselCategorySlugs(config)) {
+                for (ProductResponseDto p : productService.search(slug, null, null, null, null, null, "NEWEST", 1, limit).content()) {
+                    if (seen.add(p.getId()) && list.size() < limit) {
+                        list.add(p);
+                    }
+                }
+            }
+        } else if ("NEW_ARRIVALS".equals(filterType)) {
+            list.addAll(productService.search(null, null, null, null, null, null, "NEWEST", 1, limit).content());
+        }
+        // BEST_SELLERS / MOST_FAVORITED / CAMPAIGN: backend chưa có số liệu bán/yêu thích/chiến dịch -> danh sách rỗng.
         Map<String, Object> content = new LinkedHashMap<>();
         content.put("header", config.get("header"));
         content.put("products", list);
@@ -282,10 +348,40 @@ public class CmsServiceImpl implements CmsService {
         }
     }
 
+    /** FE gửi display.limit; khóa legacy config.limit vẫn được đọc. */
     private static int carouselLimit(Map<String, Object> config) {
         Object limit = config.get("limit");
+        if (!(limit instanceof Number) && config.get("display") instanceof Map<?, ?> d) {
+            limit = d.get("limit");
+        }
         int value = limit instanceof Number n ? n.intValue() : DEFAULT_CAROUSEL_LIMIT;
         return Math.max(1, Math.min(MAX_CAROUSEL_LIMIT, value));
+    }
+
+    private static void validateCarouselConfig(Map<String, Object> config) {
+        Object ids = carouselValue(config, "productIds");
+        if (ids != null && !(ids instanceof List<?>)) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "config.dataSource.productIds phải là mảng");
+        }
+        boolean hasIds = ids instanceof List<?> l && !l.isEmpty();
+        String filterType = carouselFilterType(config);
+        if (filterType == null) {
+            if (!hasIds && text(carouselValue(config, "collectionSlug")) == null) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Block PRODUCT_CAROUSEL cần config.dataSource.filterType, hoặc config.productIds / config.collectionSlug");
+            }
+        } else if ("MANUAL_PRODUCTS".equals(filterType) && !hasIds) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Block PRODUCT_CAROUSEL (MANUAL_PRODUCTS) cần dataSource.productIds có ít nhất 1 sản phẩm");
+        } else if ("CATEGORY".equals(filterType) && carouselCategorySlugs(config).isEmpty()) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Block PRODUCT_CAROUSEL (CATEGORY) cần dataSource.categorySlugs hoặc dataSource.categoryId");
+        } else if ("COLLECTION".equals(filterType)
+                && text(carouselValue(config, "collectionSlug")) == null
+                && text(carouselValue(config, "collectionId")) == null) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Block PRODUCT_CAROUSEL (COLLECTION) cần dataSource.collectionSlug hoặc dataSource.collectionId");
+        }
     }
 
     // ============================== helpers ==============================
@@ -329,15 +425,7 @@ public class CmsServiceImpl implements CmsService {
                         "config.layout không hợp lệ: " + layout + " (SLIDER | GRID | DOUBLE)", layout);
             }
         } else if (CmsBlockEntity.PRODUCT_CAROUSEL.equals(type)) {
-            Object ids = carouselValue(config, "productIds");
-            boolean hasIds = ids instanceof List<?> l && !l.isEmpty();
-            if (!hasIds && text(carouselValue(config, "collectionSlug")) == null) {
-                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
-                        "Block PRODUCT_CAROUSEL cần config.productIds (danh sách id/slug sản phẩm) hoặc config.collectionSlug");
-            }
-            if (ids != null && !(ids instanceof List<?>)) {
-                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "config.productIds phải là mảng");
-            }
+            validateCarouselConfig(config);
         }
         // INFO_CARDS, IMAGE_GALLERY và các loại còn lại: chỉ cần config là object (cấu trúc do client quy ước).
     }

@@ -17,11 +17,22 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UpdateProfileRequestDto {
 
-    @NotBlank
-    @Size(max = 120)
     private String fullName;
+    /** FE gửi firstName (+ lastName) thay cho fullName. */
+    private String firstName;
+    private String lastName;
 
     @Email
     @Size(max = 254)
     private String email;
+
+    @NotBlank
+    @Size(max = 120)
+    public String getFullName() {
+        if (fullName != null && !fullName.isBlank()) {
+            return fullName;
+        }
+        String joined = ((lastName == null ? "" : lastName.trim()) + " " + (firstName == null ? "" : firstName.trim())).trim();
+        return joined.isEmpty() ? null : joined;
+    }
 }

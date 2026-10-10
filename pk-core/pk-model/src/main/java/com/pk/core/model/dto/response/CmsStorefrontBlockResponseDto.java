@@ -20,4 +20,9 @@ public class CmsStorefrontBlockResponseDto {
     private int sortOrder;
     private Map<String, Object> config;
     private Map<String, Object> content;
+
+    /** FE Block.blockTypeCode (cùng giá trị với `type`). */
+    public String getBlockTypeCode() {
+        return type;
+    }
 }

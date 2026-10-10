@@ -29,4 +29,34 @@ public class OrderItemResponseDto {
         return new OrderItemResponseDto(i.getId(), i.getProductId(), i.getSkuId(), i.getName(), i.getImageUrl(),
                 i.getQuantity(), i.getUnitPrice(), i.getLineTotal());
     }
+
+    // ---- FE OrderDetailItem: field tính toán, giữ nguyên field cũ ----
+
+    public String getVariationId() {
+        return skuId == null ? null : String.valueOf(skuId);
+    }
+
+    public String getVariationName() {
+        return name;
+    }
+
+    public String getProductName() {
+        return name;
+    }
+
+    public String getImage() {
+        return imageUrl;
+    }
+
+    public String getSalePrice() {
+        return unitPrice == null ? null : String.valueOf(unitPrice.longValue());
+    }
+
+    public String getDiscountAmount() {
+        return "0";
+    }
+
+    public String getFinalAmount() {
+        return lineTotal == null ? null : String.valueOf(lineTotal.longValue());
+    }
 }

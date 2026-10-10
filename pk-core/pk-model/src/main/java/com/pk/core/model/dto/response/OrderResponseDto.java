@@ -2,6 +2,9 @@ package com.pk.core.model.dto.response;
 
 import com.pk.core.common.dto.UpdateDto;
 import com.pk.core.model.entity.OrderEntity;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -58,5 +61,58 @@ public class OrderResponseDto extends UpdateDto {
                 paymentId, items, timeline);
         dto.copyAudit(o);
         return dto;
+    }
+
+    // ---- FE OrderDetailResponse: field tính toán, giữ nguyên field cũ (status/tiền giữ kiểu hiện tại) ----
+
+    public String getOrderCode() {
+        return code;
+    }
+
+    public String getCreatedAt() {
+        Date d = placedAt != null ? placedAt : getCreatedDate();
+        return d == null ? null : d.toInstant().toString();
+    }
+
+    public String getUpdatedAt() {
+        return getUpdatedDate() == null ? null : getUpdatedDate().toInstant().toString();
+    }
+
+    public String getDiscountTotal() {
+        BigDecimal total = (productDiscount == null ? BigDecimal.ZERO : productDiscount)
+                .add(voucherDiscount == null ? BigDecimal.ZERO : voucherDiscount);
+        return String.valueOf(total.longValue());
+    }
+
+    public String getTaxTotal() {
+        return "0";
+    }
+
+    public Map<String, Object> getShippingAddressSnapshot() {
+        String full = shipRecipientName == null ? "" : shipRecipientName.trim();
+        int i = full.lastIndexOf(' ');
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("lastName", i < 0 ? "" : full.substring(0, i).trim());
+        m.put("firstName", full.substring(i + 1));
+        m.put("receiverPhone", shipPhone);
+        m.put("addressLine", shipAddressLine);
+        m.put("wardName", shipWard);
+        m.put("provinceName", shipProvince);
+        return m;
+    }
+
+    public List<Map<String, Object>> getStatusHistory() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (timeline != null) {
+            for (OrderTimelineResponseDto t : timeline) {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("toStatus", t.getStatus());
+                m.put("title", t.getStatus());
+                m.put("note", t.getNote());
+                m.put("createdAt", t.getOccurredAt() == null ? null : t.getOccurredAt().toInstant().toString());
+                list.add(m);
+            }
+        }
+        return list;
     }
 }

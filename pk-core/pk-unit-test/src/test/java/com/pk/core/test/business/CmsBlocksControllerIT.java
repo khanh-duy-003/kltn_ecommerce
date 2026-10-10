@@ -128,4 +128,104 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.blocks[1].content.products.length()").value(1))
                 .andExpect(jsonPath("$.data.blocks[1].content.products[0].slug").value("sp-" + t));
     }
+
+    // ---- PRODUCT_CAROUSEL theo contract admin FE: dataSource.filterType + display.limit ----
+
+    private String pagesPath() {
+        return UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES;
+    }
+
+    private int createPageWithCarousel(Map<String, Object> config) throws Exception {
+        return mvc.perform(jsonRequest(post(pagesPath()), Map.of("name", "Trang", "slug", "trang-" + tag(),
+                        "status", "DRAFT", "blocks", List.of(Map.of("type", "PRODUCT_CAROUSEL", "sortOrder", 0,
+                                "config", config))))
+                        .header("Authorization", admin()))
+                .andReturn().getResponse().getStatus();
+    }
+
+    private String publishCarouselPage(Map<String, Object> config) throws Exception {
+        String slug = "trang-" + tag();
+        mvc.perform(jsonRequest(post(pagesPath()), Map.of("name", "Trang", "slug", slug, "status", "PUBLISHED",
+                        "blocks", List.of(Map.of("type", "PRODUCT_CAROUSEL", "sortOrder", 0, "config", config))))
+                        .header("Authorization", admin()))
+                .andExpect(status().isCreated());
+        return UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + slug;
+    }
+
+    private ProductEntity newPublishedProduct(String t, CategoryEntity category) {
+        ProductEntity product = new ProductEntity(category.getId(), "P-" + t, "SP " + t, "sp-" + t);
+        product.setBasePrice(BigDecimal.valueOf(1_000_000));
+        product.publish();
+        products.create(product);
+        return product;
+    }
+
+    @Test
+    void carouselManualProductsResolvesDataSourceProductIds() throws Exception {
+        String t = tag();
+        CategoryEntity category = new CategoryEntity("DM " + t, "dm-" + t, null);
+        categories.create(category);
+        ProductEntity product = newPublishedProduct(t, category);
+        String url = publishCarouselPage(Map.of("header", Map.of("title", "Chọn tay"),
+                "dataSource", Map.of("filterType", "MANUAL_PRODUCTS",
+                        "productIds", List.of(String.valueOf(product.getId())))));
+        mvc.perform(get(url))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.blocks[0].content.products.length()").value(1))
+                .andExpect(jsonPath("$.data.blocks[0].content.products[0].slug").value("sp-" + t));
+    }
+
+    @Test
+    void carouselCategoryUsesCategorySlugsAndCategoryId() throws Exception {
+        String t = tag();
+        CategoryEntity category = new CategoryEntity("DM " + t, "dm-" + t, null);
+        categories.create(category);
+        newPublishedProduct(t, category);
+        // categorySlugs
+        mvc.perform(get(publishCarouselPage(Map.of("header", Map.of("title", "DM"),
+                        "dataSource", Map.of("filterType", "CATEGORY", "categorySlugs", List.of("dm-" + t))))))
+                .andExpect(jsonPath("$.data.blocks[0].content.products.length()").value(1))
+                .andExpect(jsonPath("$.data.blocks[0].content.products[0].slug").value("sp-" + t));
+        // categoryId (FE dùng làm slug)
+        mvc.perform(get(publishCarouselPage(Map.of("header", Map.of("title", "DM"),
+                        "dataSource", Map.of("filterType", "CATEGORY", "categoryId", "dm-" + t)))))
+                .andExpect(jsonPath("$.data.blocks[0].content.products.length()").value(1));
+    }
+
+    @Test
+    void carouselNewArrivalsHonorsDisplayLimit() throws Exception {
+        String t = tag();
+        CategoryEntity category = new CategoryEntity("DM " + t, "dm-" + t, null);
+        categories.create(category);
+        newPublishedProduct(t, category);
+        newPublishedProduct(t + "b", category);
+        mvc.perform(get(publishCarouselPage(Map.of("header", Map.of("title", "Mới"),
+                        "display", Map.of("limit", 1),
+                        "dataSource", Map.of("filterType", "NEW_ARRIVALS")))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.blocks[0].content.products.length()").value(1));
+    }
+
+    @Test
+    void carouselTypesWithoutBackendDataReturnEmptyListInsteadOfError() throws Exception {
+        for (String filterType : List.of("BEST_SELLERS", "MOST_FAVORITED", "CAMPAIGN")) {
+            mvc.perform(get(publishCarouselPage(Map.of("header", Map.of("title", filterType),
+                            "dataSource", Map.of("filterType", filterType)))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.blocks[0].content.products.length()").value(0));
+        }
+    }
+
+    @Test
+    void carouselConfigMissingRequiredDataSourceFieldsIsRejected() throws Exception {
+        org.junit.jupiter.api.Assertions.assertEquals(400, createPageWithCarousel(Map.of("header", Map.of("title", "x"),
+                "dataSource", Map.of("filterType", "MANUAL_PRODUCTS", "productIds", List.of()))));
+        org.junit.jupiter.api.Assertions.assertEquals(400, createPageWithCarousel(Map.of("header", Map.of("title", "x"),
+                "dataSource", Map.of("filterType", "CATEGORY"))));
+        org.junit.jupiter.api.Assertions.assertEquals(400, createPageWithCarousel(Map.of("header", Map.of("title", "x"),
+                "dataSource", Map.of("filterType", "COLLECTION"))));
+        org.junit.jupiter.api.Assertions.assertEquals(400, createPageWithCarousel(Map.of("header", Map.of("title", "x"))));
+        org.junit.jupiter.api.Assertions.assertEquals(201, createPageWithCarousel(Map.of("header", Map.of("title", "x"),
+                "dataSource", Map.of("filterType", "NEW_ARRIVALS"))));
+    }
 }
