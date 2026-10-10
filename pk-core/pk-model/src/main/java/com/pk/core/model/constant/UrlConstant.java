@@ -20,7 +20,12 @@ public class UrlConstant {
     /** Hằng dùng chung cho cả module. */
     @UtilityClass
     public static class Common {
-        public final String BASE = "/api";
+        /** Gốc API. */
+        public final String API = "/api";
+        /** Phiên bản API. */
+        public final String VERSION = "/v1";
+        /** Gốc TƯƠNG ĐỐI của các hằng route bên dưới (không chứa /api/v1; Rest gắn @RequestMapping(Common.API + Common.VERSION)). */
+        public final String BASE = "";
     }
 
     /** Nhóm route công khai cho FE storefront (không yêu cầu đăng nhập). */

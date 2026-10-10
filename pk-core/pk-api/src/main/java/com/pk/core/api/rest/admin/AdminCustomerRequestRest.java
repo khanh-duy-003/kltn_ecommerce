@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CustomerRequestService;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * loại (back-in-stock / order-support / newsletter) cùng bộ lọc; /{id}, /{id}/status, /status/bulk dùng chung.
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminCustomerRequestRest extends AbstractRest {
 

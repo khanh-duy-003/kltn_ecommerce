@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CategoryService;
@@ -41,6 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
  * không đụng tới SKU.</p>
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminCatalogRest extends AbstractRest {
 

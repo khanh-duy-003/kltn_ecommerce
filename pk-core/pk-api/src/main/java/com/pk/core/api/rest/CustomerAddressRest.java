@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CustomerAddressService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Sổ địa chỉ của khách đang đăng nhập (/storefront/me/addresses) - yêu cầu Bearer token (mặc định
  * anyRequest().authenticated() ở SecurityConfig, không cần thêm rule permitAll). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class CustomerAddressRest extends AbstractRest {
 

@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.BadgeService;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * {success, message} đúng spec. PUT flow nhận id trên path ({flowId}) vì spec không nói rõ sửa flow nào.
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminBadgeRest extends AbstractRest {
 

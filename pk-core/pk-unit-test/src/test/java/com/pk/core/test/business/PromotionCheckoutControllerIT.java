@@ -60,7 +60,7 @@ class PromotionCheckoutControllerIT extends IntegrationTestBase {
         body.put("endsAt", new Date(System.currentTimeMillis() + 86_400_000));
         body.put("status", status);
         body.put("productIds", List.of(productId));
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Promotion.BASE), body)
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Promotion.BASE), body)
                         .header("Authorization", bearer(adminAccessToken())))
                 .andExpect(status().isCreated());
     }
@@ -70,7 +70,7 @@ class PromotionCheckoutControllerIT extends IntegrationTestBase {
         long[] p = newProduct();
         createPromotion("PERCENT", 10, null, p[0], "PUBLISHED");
 
-        postJson(UrlConstant.Cart.BASE + "/calculate-total",
+        postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/calculate-total",
                 Map.of("items", List.of(Map.of("variationId", String.valueOf(p[1]), "quantity", 2))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.subTotal").value(2_000_000))
@@ -83,7 +83,7 @@ class PromotionCheckoutControllerIT extends IntegrationTestBase {
         long[] p = newProduct();
         createPromotion("PERCENT", 50, null, p[0], "DRAFT");
 
-        postJson(UrlConstant.Cart.BASE + "/calculate-total",
+        postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/calculate-total",
                 Map.of("items", List.of(Map.of("variationId", String.valueOf(p[1]), "quantity", 1))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.discountTotal").value(0))
@@ -98,7 +98,7 @@ class PromotionCheckoutControllerIT extends IntegrationTestBase {
         String token = customerAccessToken();
         String addressBody = json.writeValueAsString(Map.of("recipientName", "Nguyễn A", "phone", "0901234567",
                 "province", "HCM", "district", "Q1", "ward", "P1", "addressLine", "1 Lê Lợi"));
-        long addressId = json.readTree(mvc.perform(post(UrlConstant.Me.ADDRESSES)
+        long addressId = json.readTree(mvc.perform(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Me.ADDRESSES)
                         .header("Authorization", bearer(token))
                         .contentType("application/json").content(addressBody))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
@@ -107,12 +107,12 @@ class PromotionCheckoutControllerIT extends IntegrationTestBase {
         Map<String, Object> req = Map.of("addressId", addressId, "shippingMethod", "STANDARD",
                 "paymentMethod", "COD", "items", List.of(Map.of("skuId", p[1], "quantity", 2)));
 
-        mvc.perform(jsonRequest(post(UrlConstant.Checkout.QUOTE), req).header("Authorization", bearer(token)))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Checkout.QUOTE), req).header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.summary.productDiscount").value(300_000))
                 .andExpect(jsonPath("$.data.summary.grandTotal").value(1_700_000));
 
-        mvc.perform(jsonRequest(post(UrlConstant.Order.BASE), req).header("Authorization", bearer(token)))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Order.BASE), req).header("Authorization", bearer(token)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.productDiscount").value(300_000))
                 .andExpect(jsonPath("$.data.grandTotal").value(1_700_000));

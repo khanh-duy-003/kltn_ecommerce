@@ -1,5 +1,6 @@
 package com.pk.core.test.business;
 
+import com.pk.core.model.constant.UrlConstant;
 import com.pk.core.model.constant.admin.UrlAdminConstant;
 import com.pk.core.test.common.IntegrationTestBase;
 import org.junit.jupiter.api.Test;
@@ -18,9 +19,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** GET /admin/users, GET /admin/roles, GET/POST /admin/pre-orders - chỉ admin. */
 class AdminAccessPreOrderControllerIT extends IntegrationTestBase {
 
-    private static final String USERS = UrlAdminConstant.Access.USERS;
-    private static final String ROLES = UrlAdminConstant.Access.ROLES;
-    private static final String PRE_ORDERS = UrlAdminConstant.PreOrder.BASE;
+    private static final String USERS = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Access.USERS;
+    private static final String ROLES = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Access.ROLES;
+    private static final String PRE_ORDERS = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.PreOrder.BASE;
 
     @Test
     void endpointsRequireAdminRole() throws Exception {

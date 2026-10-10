@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.repository.WishlistItemRepo;
+import com.pk.core.business.service.ProductService;
 import com.pk.core.business.service.WishlistService;
 import com.pk.core.common.exception.ResourceNotFoundException;
 import com.pk.core.model.dto.response.WishlistIdsResponseDto;
@@ -25,6 +26,7 @@ public class WishlistServiceImpl implements WishlistService {
 
     private final WishlistItemRepo wishlist;
     private final ProductRepo products;
+    private final ProductService productService;
 
     @Transactional(readOnly = true)
     @Override
@@ -37,7 +39,7 @@ public class WishlistServiceImpl implements WishlistService {
             }
             result.add(new WishlistItemResponseDto(String.valueOf(p.getId()), p.getName(), p.getSlug(),
                     p.getThumbnailUrl(), p.getBasePrice() == null ? null : p.getBasePrice().longValue(),
-                    item.getCreatedDate()));
+                    item.getCreatedDate(), productService.findBySlug(p.getSlug())));
         }
         return result;
     }

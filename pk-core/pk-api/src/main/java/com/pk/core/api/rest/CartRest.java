@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CartService;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Riêng /merge bắt buộc đăng nhập (SecurityConfig). @AuthenticationPrincipal là null với khách vãng lai.
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class CartRest extends AbstractRest {
 

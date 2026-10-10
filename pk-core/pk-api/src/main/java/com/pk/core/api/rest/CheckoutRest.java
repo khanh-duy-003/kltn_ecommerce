@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CheckoutService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * này KHÔNG có trong danh sách permitAll của SecurityConfig, rơi vào anyRequest().authenticated()
  * mặc định. Đây là khác biệt có chủ đích so với spec, đã ghi rõ trong SecurityConfig + changelog. */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class CheckoutRest extends AbstractRest {
 

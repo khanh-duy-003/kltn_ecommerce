@@ -65,17 +65,17 @@ class CartWishlistControllerIT extends IntegrationTestBase {
     void guestCartFlowAddAccumulateAndRead() throws Exception {
         long skuId = newPublishedProduct(10, 1_000_000)[1];
 
-        JsonNode first = body(postJson(UrlConstant.Cart.BASE, addBody(skuId, 2))
+        JsonNode first = body(postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE, addBody(skuId, 2))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.success").value(true)));
         String guestId = first.get("guestId").asText();
 
-        mvc.perform(jsonRequest(post(UrlConstant.Cart.BASE), addBody(skuId, 3)).header(GUEST_HEADER, guestId))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE), addBody(skuId, 3)).header(GUEST_HEADER, guestId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].quantity").value(5));
 
-        mvc.perform(get(UrlConstant.Cart.BASE).header(GUEST_HEADER, guestId))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE).header(GUEST_HEADER, guestId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].quantity").value(5))
                 .andExpect(jsonPath("$.data.items[0].variationId").value(String.valueOf(skuId)))
@@ -86,7 +86,7 @@ class CartWishlistControllerIT extends IntegrationTestBase {
     void quantityBeyondStockIsCappedAndReported() throws Exception {
         long skuId = newPublishedProduct(3, 500_000)[1];
 
-        postJson(UrlConstant.Cart.BASE, addBody(skuId, 9))
+        postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE, addBody(skuId, 9))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.success").value(false))
                 .andExpect(jsonPath("$.data.reason").value("INSUFFICIENT_STOCK"))
@@ -95,7 +95,7 @@ class CartWishlistControllerIT extends IntegrationTestBase {
 
     @Test
     void invalidVariationIdReturns400() throws Exception {
-        postJson(UrlConstant.Cart.BASE, Map.of("clearAll", false,
+        postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE, Map.of("clearAll", false,
                 "items", List.of(Map.of("variationId", "abc", "quantity", 1))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].code").value("CART_ITEM_INVALID"));
@@ -104,23 +104,23 @@ class CartWishlistControllerIT extends IntegrationTestBase {
     @Test
     void mergeRequiresLoginThenMovesGuestCartIntoAccount() throws Exception {
         long skuId = newPublishedProduct(10, 1_000_000)[1];
-        String guestId = body(postJson(UrlConstant.Cart.BASE, addBody(skuId, 2))).get("guestId").asText();
+        String guestId = body(postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE, addBody(skuId, 2))).get("guestId").asText();
 
-        mvc.perform(post(UrlConstant.Cart.BASE + "/merge").header(GUEST_HEADER, guestId))
+        mvc.perform(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/merge").header(GUEST_HEADER, guestId))
                 .andExpect(status().isUnauthorized());
 
         String token = customerAccessToken();
-        mvc.perform(post(UrlConstant.Cart.BASE + "/merge")
+        mvc.perform(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/merge")
                         .header(GUEST_HEADER, guestId).header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].quantity").value(2));
 
         // Giỏ vãng lai đã bị xoá, giỏ tài khoản có hàng.
-        mvc.perform(get(UrlConstant.Cart.BASE).header(GUEST_HEADER, guestId))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE).header(GUEST_HEADER, guestId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(0));
-        mvc.perform(get(UrlConstant.Cart.BASE).header("Authorization", bearer(token)))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE).header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].quantity").value(2));
     }
@@ -129,7 +129,7 @@ class CartWishlistControllerIT extends IntegrationTestBase {
     void calculateTotalIsPublic() throws Exception {
         long skuId = newPublishedProduct(10, 1_000_000)[1];
 
-        postJson(UrlConstant.Cart.BASE + "/calculate-total",
+        postJson(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/calculate-total",
                 Map.of("items", List.of(Map.of("variationId", String.valueOf(skuId), "quantity", 3))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.subTotal").value(3_000_000))
@@ -140,7 +140,7 @@ class CartWishlistControllerIT extends IntegrationTestBase {
     void recommendationIsPublicAndPaged() throws Exception {
         newPublishedProduct(10, 700_000);
 
-        mvc.perform(get(UrlConstant.Cart.BASE + "/recommendation").param("page", "1").param("take", "5"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cart.BASE + "/recommendation").param("page", "1").param("take", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pagination.currentPage").value(1))
                 .andExpect(jsonPath("$.data.list").isArray());
@@ -150,8 +150,8 @@ class CartWishlistControllerIT extends IntegrationTestBase {
 
     @Test
     void wishlistRequiresLogin() throws Exception {
-        mvc.perform(get(UrlConstant.Wishlist.BASE)).andExpect(status().isUnauthorized());
-        mvc.perform(get(UrlConstant.Wishlist.BASE + "/product-ids")).andExpect(status().isUnauthorized());
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE)).andExpect(status().isUnauthorized());
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE + "/product-ids")).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -160,46 +160,47 @@ class CartWishlistControllerIT extends IntegrationTestBase {
         String auth = bearer(customerAccessToken());
         String pid = String.valueOf(productId);
 
-        mvc.perform(jsonRequest(post(UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
                         .header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.productIds[0]").value(pid));
         // Thêm lần nữa vẫn chỉ 1 dòng (idempotent).
-        mvc.perform(jsonRequest(post(UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
                         .header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.productIds.length()").value(1));
 
-        mvc.perform(get(UrlConstant.Wishlist.BASE + "/" + pid).header("Authorization", auth))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE + "/" + pid).header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.wishlisted").value(true));
-        mvc.perform(get(UrlConstant.Wishlist.BASE + "/product-ids").header("Authorization", auth))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE + "/product-ids").header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.productIds[0]").value(pid));
-        mvc.perform(get(UrlConstant.Wishlist.BASE).header("Authorization", auth))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE).header("Authorization", auth))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].productId").value(pid))
-                .andExpect(jsonPath("$.data[0].basePrice").value(1_000_000));
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].productId").value(pid))
+                .andExpect(jsonPath("$.data.list[0].basePrice").value(1_000_000));
 
-        mvc.perform(jsonRequest(delete(UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
+        mvc.perform(jsonRequest(delete(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE), Map.of("productIds", List.of(pid)))
                         .header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.productIds.length()").value(0));
-        mvc.perform(get(UrlConstant.Wishlist.BASE + "/" + pid).header("Authorization", auth))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE + "/" + pid).header("Authorization", auth))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.wishlisted").value(false));
     }
 
     @Test
     void wishlistAddUnknownProductReturns404() throws Exception {
-        mvc.perform(jsonRequest(post(UrlConstant.Wishlist.BASE), Map.of("productIds", List.of("999999999")))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE), Map.of("productIds", List.of("999999999")))
                         .header("Authorization", bearer(customerAccessToken())))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void wishlistAddNonNumericProductIdReturns400() throws Exception {
-        mvc.perform(jsonRequest(post(UrlConstant.Wishlist.BASE), Map.of("productIds", List.of("abc")))
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Wishlist.BASE), Map.of("productIds", List.of("abc")))
                         .header("Authorization", bearer(customerAccessToken())))
                 .andExpect(status().isBadRequest());
     }

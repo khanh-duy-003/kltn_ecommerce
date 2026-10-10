@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CustomerRequestService;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Khách gửi yêu cầu (/storefront/customer-request/...) - công khai, chỉ POST (xem SecurityConfig). Trả 200 + {success, message} theo spec. */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class CustomerRequestRest extends AbstractRest {
 

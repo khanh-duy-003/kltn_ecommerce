@@ -1,5 +1,7 @@
 package com.pk.core.identity.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.web.AbstractRest;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * route cũ trong {@link AuthRest} (/api/auth/..., /api/me) - không đổi ở đây.
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class StorefrontAuthRest extends AbstractRest {
 

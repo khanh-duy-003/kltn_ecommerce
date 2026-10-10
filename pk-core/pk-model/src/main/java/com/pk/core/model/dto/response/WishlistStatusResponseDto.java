@@ -14,4 +14,9 @@ public class WishlistStatusResponseDto {
 
     private String productId;
     private boolean wishlisted;
+
+    /** FE đọc `isWished`. */
+    public boolean getIsWished() {
+        return wishlisted;
+    }
 }

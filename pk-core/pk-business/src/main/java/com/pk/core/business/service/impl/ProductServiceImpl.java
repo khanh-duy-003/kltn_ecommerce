@@ -123,8 +123,10 @@ public class ProductServiceImpl implements ProductService {
                 .map(CollectionResponseDto::from)
                 .toList();
 
-        return ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
+        ProductResponseDto dto = ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
                 publishedSkus, productCollections);
+        dto.setCategorySlug(category != null ? category.getSlug() : null);
+        return dto;
     }
 
     private static String nullToEmpty(String s) {
@@ -288,7 +290,9 @@ public class ProductServiceImpl implements ProductService {
                 .map(CollectionResponseDto::from)
                 .toList();
 
-        return ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
+        ProductResponseDto dto = ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
                 skus, productCollections);
+        dto.setCategorySlug(category != null ? category.getSlug() : null);
+        return dto;
     }
 }

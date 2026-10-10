@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.PromotionService;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** API admin - Khuyến mãi & Voucher (document/09-tong-hop-api-fe.md mục K). Gói api.rest.admin
  * (pk-api). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminPromotionVoucherRest extends AbstractRest {
 

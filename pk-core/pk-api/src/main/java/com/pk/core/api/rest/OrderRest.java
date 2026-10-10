@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.OrderService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Đặt hàng/xem đơn/huỷ đơn của khách đang đăng nhập (/storefront/order) - yêu cầu Bearer token
  * (mặc định anyRequest().authenticated() ở SecurityConfig). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class OrderRest extends AbstractRest {
 

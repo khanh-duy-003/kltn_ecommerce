@@ -1,5 +1,6 @@
 package com.pk.core.model.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.pk.core.common.dto.BaseDto;
 import com.pk.core.model.entity.ProductSkuEntity;
 import lombok.AllArgsConstructor;
@@ -15,6 +16,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ProductSkuResponseDto extends BaseDto {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
     private String skuCode;
     private String name;

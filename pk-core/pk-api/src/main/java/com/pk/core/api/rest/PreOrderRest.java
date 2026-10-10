@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.PreOrderService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Cấu hình đặt trước đang hiệu lực (công khai). Khi enabled=true, SKU hết hàng vẫn thêm giỏ/báo giá/đặt hàng được
  * (đơn đặt trước) và nhãn storefront của SKU hết hàng là PRE_ORDER. Mở rộng ngoài spec FE. */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class PreOrderRest extends AbstractRest {
 

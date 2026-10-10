@@ -43,16 +43,16 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
     @Test
     void unknownBlockTypeAndBadConfigAreRejected() throws Exception {
         String slug = "trang-" + tag();
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
                         "status", "DRAFT", "blocks", List.of(Map.of("type", "HERO", "sortOrder", 0, "config", Map.of()))))
                         .header("Authorization", admin()))
                 .andExpect(status().isBadRequest());
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
                         "status", "DRAFT", "blocks", List.of(Map.of("type", "BANNER", "sortOrder", 0, "config", Map.of()))))
                         .header("Authorization", admin()))
                 .andExpect(status().isBadRequest());
         // Lỗi block không để lại trang dở dang: tạo lại cùng slug với block hợp lệ phải thành công (không 409).
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang", "slug", slug,
                         "status", "DRAFT", "blocks", List.of(Map.of("type", "IMAGE_GALLERY", "sortOrder", 0,
                                 "config", Map.of("images", List.of(Map.of("url", "/a.jpg")))))))
                         .header("Authorization", admin()))
@@ -62,11 +62,11 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
     @Test
     void blockCrudUsesConfigAndTargetSegment() throws Exception {
         String slug = "trang-" + tag();
-        long pageId = body(mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES),
+        long pageId = body(mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES),
                         Map.of("name", "Trang", "slug", slug, "status", "DRAFT")).header("Authorization", admin()))
                 .andExpect(status().isCreated())).get("id").asLong();
 
-        String blocksPath = UrlAdminConstant.Cms.PAGES + "/" + pageId + "/blocks";
+        String blocksPath = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES + "/" + pageId + "/blocks";
         JsonNode block = body(mvc.perform(jsonRequest(post(blocksPath), Map.of("type", "INFO_CARDS", "sortOrder", 1,
                         "config", Map.of("cards", List.of(Map.of("title", "A"))), "targetSegment", "VIP"))
                         .header("Authorization", admin()))
@@ -94,7 +94,7 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
         placement.setName("Vị trí CMS");
         placement.setDisplayType("GRID");
         placements.create(placement);
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Banner.BANNERS), Map.of("internalName", "Banner " + code,
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Banner.BANNERS), Map.of("internalName", "Banner " + code,
                         "placementCode", code, "status", "ACTIVE", "title", "Xin chào"))
                         .header("Authorization", admin()))
                 .andExpect(status().isOk());
@@ -108,7 +108,7 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
         products.create(product);
 
         String slug = "trang-" + tag();
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang chủ", "slug", slug,
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("name", "Trang chủ", "slug", slug,
                         "status", "PUBLISHED", "blocks", List.of(
                                 Map.of("type", "BANNER", "sortOrder", 1, "config", Map.of("placementCode", code)),
                                 Map.of("type", "PRODUCT_CAROUSEL", "sortOrder", 2, "config", Map.of(
@@ -117,7 +117,7 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
                         .header("Authorization", admin()))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get(UrlConstant.Cms.PAGES + "/" + slug))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + slug))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.blocks[0].type").value("BANNER"))
                 .andExpect(jsonPath("$.data.blocks[0].content.layout").value("GRID"))

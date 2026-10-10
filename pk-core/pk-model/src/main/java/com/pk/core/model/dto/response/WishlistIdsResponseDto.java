@@ -15,4 +15,9 @@ import java.util.List;
 public class WishlistIdsResponseDto {
 
     private List<String> productIds;
+
+    /** FE đọc `total` cùng `productIds`. */
+    public int getTotal() {
+        return productIds == null ? 0 : productIds.size();
+    }
 }

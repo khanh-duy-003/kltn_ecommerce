@@ -17,4 +17,9 @@ public class CartProductResponseDto {
     private String slug;
     /** Ảnh đại diện (products.thumbnail_url). */
     private String image;
+
+    /** FE CartProduct.imageHover — chưa có ảnh hover riêng nên dùng lại ảnh chính. */
+    public String getImageHover() {
+        return image;
+    }
 }

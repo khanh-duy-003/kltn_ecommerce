@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.web.AbstractRest;
@@ -26,6 +28,7 @@ import jakarta.validation.Valid;
  * DELETE trả 200 + {success, message} (khác quy ước 204 của các Rest admin cũ vì spec FE quy định như vậy).
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminBannerRest extends AbstractRest {
 

@@ -17,7 +17,7 @@ class AuthControllerIT extends IntegrationTestBase {
     void registerReturns201WithTokensAndCustomerRole() throws Exception {
         String phone = uniquePhone();
         String email = uniqueEmail();
-        postJson("/api/auth/register", Map.of("phone", phone, "email", email, "password", PASSWORD, "fullName", "An"))
+        postJson("/api/v1/auth/register", Map.of("phone", phone, "email", email, "password", PASSWORD, "fullName", "An"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
                 .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
@@ -30,7 +30,7 @@ class AuthControllerIT extends IntegrationTestBase {
     @Test
     void registerWithoutEmailIsAllowed() throws Exception {
         String phone = uniquePhone();
-        postJson("/api/auth/register", Map.of("phone", phone, "password", PASSWORD, "fullName", "An"))
+        postJson("/api/v1/auth/register", Map.of("phone", phone, "password", PASSWORD, "fullName", "An"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.user.phone").value(phone));
     }
@@ -42,7 +42,7 @@ class AuthControllerIT extends IntegrationTestBase {
 
         // cùng một số nhưng viết dạng +84: phải bị coi là trùng
         String international = "+84" + phone.substring(1);
-        postJson("/api/auth/register", Map.of("phone", international, "password", PASSWORD, "fullName", "Dup"))
+        postJson("/api/v1/auth/register", Map.of("phone", international, "password", PASSWORD, "fullName", "Dup"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errors[0].code").value("PHONE_TAKEN"));
     }
@@ -50,17 +50,17 @@ class AuthControllerIT extends IntegrationTestBase {
     @Test
     void registerDuplicateEmailReturns409EvenWithDifferentCase() throws Exception {
         String email = uniqueEmail();
-        postJson("/api/auth/register", Map.of("phone", uniquePhone(), "email", email, "password", PASSWORD, "fullName", "An"))
+        postJson("/api/v1/auth/register", Map.of("phone", uniquePhone(), "email", email, "password", PASSWORD, "fullName", "An"))
                 .andExpect(status().isCreated());
 
-        postJson("/api/auth/register", Map.of("phone", uniquePhone(), "email", email.toUpperCase(), "password", PASSWORD, "fullName", "Dup"))
+        postJson("/api/v1/auth/register", Map.of("phone", uniquePhone(), "email", email.toUpperCase(), "password", PASSWORD, "fullName", "Dup"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errors[0].code").value("EMAIL_TAKEN"));
     }
 
     @Test
     void registerWithInvalidBodyReturns400WithFieldErrors() throws Exception {
-        postJson("/api/auth/register", Map.of("phone", "abc", "email", "not-an-email", "password", "123", "fullName", "An"))
+        postJson("/api/v1/auth/register", Map.of("phone", "abc", "email", "not-an-email", "password", "123", "fullName", "An"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field=='phone')]").exists())
                 .andExpect(jsonPath("$.errors[?(@.field=='email')]").exists())
@@ -69,7 +69,7 @@ class AuthControllerIT extends IntegrationTestBase {
 
     @Test
     void registerWithoutPhoneReturns400() throws Exception {
-        postJson("/api/auth/register", Map.of("email", uniqueEmail(), "password", PASSWORD, "fullName", "An"))
+        postJson("/api/v1/auth/register", Map.of("email", uniqueEmail(), "password", PASSWORD, "fullName", "An"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field=='phone')]").exists());
     }
@@ -79,7 +79,7 @@ class AuthControllerIT extends IntegrationTestBase {
         String phone = uniquePhone();
         registerCustomer(phone);
 
-        postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))
+        postJson("/api/v1/auth/login", Map.of("phone", phone, "password", PASSWORD))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
     }
@@ -89,7 +89,7 @@ class AuthControllerIT extends IntegrationTestBase {
         String phone = uniquePhone();
         registerCustomer(phone);
 
-        postJson("/api/auth/login", Map.of("phone", "+84" + phone.substring(1), "password", PASSWORD))
+        postJson("/api/v1/auth/login", Map.of("phone", "+84" + phone.substring(1), "password", PASSWORD))
                 .andExpect(status().isOk());
     }
 
@@ -98,21 +98,21 @@ class AuthControllerIT extends IntegrationTestBase {
         String phone = uniquePhone();
         registerCustomer(phone);
 
-        postJson("/api/auth/login", Map.of("phone", phone, "password", "WrongPassword1"))
+        postJson("/api/v1/auth/login", Map.of("phone", phone, "password", "WrongPassword1"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors[0].code").value("INVALID_CREDENTIALS"));
     }
 
     @Test
     void meWithoutTokenReturns401Json() throws Exception {
-        mvc.perform(get("/api/me"))
+        mvc.perform(get("/api/v1/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors[0].code").value("UNAUTHORIZED"));
     }
 
     @Test
     void meWithGarbageTokenReturns401() throws Exception {
-        mvc.perform(get("/api/me").header("Authorization", bearer("not.a.jwt")))
+        mvc.perform(get("/api/v1/me").header("Authorization", bearer("not.a.jwt")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -121,7 +121,7 @@ class AuthControllerIT extends IntegrationTestBase {
         String phone = uniquePhone();
         String token = registerCustomer(phone).get("accessToken").asText();
 
-        mvc.perform(get("/api/me").header("Authorization", bearer(token)))
+        mvc.perform(get("/api/v1/me").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.phone").value(phone))
                 .andExpect(jsonPath("$.data.roles", hasItem("CUSTOMER")));
@@ -131,24 +131,24 @@ class AuthControllerIT extends IntegrationTestBase {
     void refreshRotatesTokenAndOldTokenIsRejected() throws Exception {
         String first = registerCustomer(uniquePhone()).get("refreshToken").asText();
 
-        JsonNode rotated = body(postJson("/api/auth/refresh", Map.of("refreshToken", first))
+        JsonNode rotated = body(postJson("/api/v1/auth/refresh", Map.of("refreshToken", first))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty()));
         String second = rotated.get("refreshToken").asText();
 
         // Token cũ đã dùng rồi: bị từ chối...
-        postJson("/api/auth/refresh", Map.of("refreshToken", first))
+        postJson("/api/v1/auth/refresh", Map.of("refreshToken", first))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors[0].code").value("REFRESH_REUSED"));
 
         // ...và việc dùng lại bị coi là dấu hiệu bị đánh cắp: token mới của cùng phiên cũng bị thu hồi.
-        postJson("/api/auth/refresh", Map.of("refreshToken", second))
+        postJson("/api/v1/auth/refresh", Map.of("refreshToken", second))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void refreshWithUnknownTokenReturns401() throws Exception {
-        postJson("/api/auth/refresh", Map.of("refreshToken", "does-not-exist"))
+        postJson("/api/v1/auth/refresh", Map.of("refreshToken", "does-not-exist"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors[0].code").value("REFRESH_INVALID"));
     }
@@ -157,14 +157,14 @@ class AuthControllerIT extends IntegrationTestBase {
     void logoutRevokesRefreshToken() throws Exception {
         String refresh = registerCustomer(uniquePhone()).get("refreshToken").asText();
 
-        postJson("/api/auth/logout", Map.of("refreshToken", refresh)).andExpect(status().isNoContent());
+        postJson("/api/v1/auth/logout", Map.of("refreshToken", refresh)).andExpect(status().isNoContent());
 
-        postJson("/api/auth/refresh", Map.of("refreshToken", refresh)).andExpect(status().isUnauthorized());
+        postJson("/api/v1/auth/refresh", Map.of("refreshToken", refresh)).andExpect(status().isUnauthorized());
     }
 
     @Test
     void customerCannotAccessAdminEndpoints() throws Exception {
-        mvc.perform(get("/api/admin/anything").header("Authorization", bearer(customerAccessToken())))
+        mvc.perform(get("/api/v1/admin/anything").header("Authorization", bearer(customerAccessToken())))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errors[0].code").value("FORBIDDEN"));
     }

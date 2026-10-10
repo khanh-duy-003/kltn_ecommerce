@@ -49,7 +49,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
 
     private String createTemplate(String badgeType, String displayText) throws Exception {
         String code = badgeType + "_" + tag();
-        return body(adminPost(UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Mẫu " + code, "code", code,
+        return body(adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Mẫu " + code, "code", code,
                 "type", "TEXT", "badgeType", badgeType, "status", "ACTIVE", "displayText", displayText,
                 "defaultPosition", "TOP_LEFT",
                 "styleConfig", Map.of("shape", "PILL", "backgroundColor", "#B8860B", "textColor", "#FFFFFF", "fontSize", 12),
@@ -62,7 +62,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
         for (String id : templateIds) {
             refs.add(Map.of("badgeTemplateId", id, "priorityWeight", 999, "isPinned", true));
         }
-        adminPost(UrlAdminConstant.Badge.FLOW, Map.of("name", "Flow " + tag(), "status", "ACTIVE", "ruleType", ruleType,
+        adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.FLOW, Map.of("name", "Flow " + tag(), "status", "ACTIVE", "ruleType", ruleType,
                 "channel", "ALL", "templates", refs)).andExpect(status().isOk());
     }
 
@@ -85,7 +85,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
     }
 
     private void setPreOrder(boolean enabled) throws Exception {
-        adminPost(UrlAdminConstant.PreOrder.BASE, Map.of("enabled", enabled, "message", "Giao sau 2-3 tuần"))
+        adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.PreOrder.BASE, Map.of("enabled", enabled, "message", "Giao sau 2-3 tuần"))
                 .andExpect(status().isOk());
     }
 
@@ -94,19 +94,19 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
     @Test
     void templateCrudFollowsSpec() throws Exception {
         String code = "NEW_" + tag();
-        JsonNode created = body(adminPost(UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Hàng mới", "code", code,
+        JsonNode created = body(adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Hàng mới", "code", code,
                 "type", "TEXT", "badgeType", "NEW_ARRIVAL", "displayText", "Mới"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.defaultPosition").value("TOP_LEFT")));
         String id = created.get("id").asText();
 
-        adminPost(UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Trùng", "code", code, "type", "TEXT",
+        adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Trùng", "code", code, "type", "TEXT",
                 "badgeType", "NEW_ARRIVAL")).andExpect(status().isConflict());
-        adminPost(UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Sai enum", "code", "X_" + tag(), "type", "NOPE",
+        adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Sai enum", "code", "X_" + tag(), "type", "NOPE",
                 "badgeType", "NEW_ARRIVAL")).andExpect(status().isBadRequest());
 
-        mvc.perform(jsonRequest(patch(UrlAdminConstant.Badge.TEMPLATES + "/" + id),
+        mvc.perform(jsonRequest(patch(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES + "/" + id),
                         Map.of("displayText", "Mới ra mắt", "defaultPosition", "TOP_RIGHT", "code", "IGNORED"))
                         .header("Authorization", adminAuth()))
                 .andExpect(status().isOk())
@@ -114,23 +114,23 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.defaultPosition").value("TOP_RIGHT"))
                 .andExpect(jsonPath("$.data.code").value(code));
 
-        mvc.perform(get(UrlAdminConstant.Badge.TEMPLATES).param("badgeType", "NEW_ARRIVAL").param("take", "100")
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES).param("badgeType", "NEW_ARRIVAL").param("take", "100")
                         .header("Authorization", adminAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[?(@.id=='" + id + "')]").exists())
                 .andExpect(jsonPath("$.data.page").value(1));
 
-        mvc.perform(delete(UrlAdminConstant.Badge.TEMPLATES + "/" + id).header("Authorization", adminAuth()))
+        mvc.perform(delete(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES + "/" + id).header("Authorization", adminAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.success").value(true));
-        mvc.perform(get(UrlAdminConstant.Badge.TEMPLATES + "/" + id).header("Authorization", adminAuth()))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES + "/" + id).header("Authorization", adminAuth()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void flowCreateListAndReplace() throws Exception {
         String templateId = createTemplate("CAMPAIGN", "Sale");
-        JsonNode flow = body(adminPost(UrlAdminConstant.Badge.FLOW, Map.of("name", "Flow mùa hè", "status", "ACTIVE",
+        JsonNode flow = body(adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.FLOW, Map.of("name", "Flow mùa hè", "status", "ACTIVE",
                 "ruleType", "ALL", "channel", "WEB",
                 "templates", List.of(Map.of("badgeTemplateId", templateId, "priorityWeight", 10, "isPinned", false))))
                 .andExpect(status().isOk())
@@ -138,14 +138,14 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.templates[0].badgeTemplateId").value(templateId)));
         String flowId = flow.get("id").asText();
 
-        mvc.perform(get(UrlAdminConstant.Badge.FLOW).param("status", "ACTIVE").param("take", "100")
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.FLOW).param("status", "ACTIVE").param("take", "100")
                         .header("Authorization", adminAuth()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[?(@.id=='" + flowId + "')]").exists())
                 .andExpect(jsonPath("$.data.counts.all").isNumber())
                 .andExpect(jsonPath("$.data.counts.active").isNumber());
 
-        mvc.perform(jsonRequest(put(UrlAdminConstant.Badge.FLOW + "/" + flowId), Map.of("name", "Flow đã sửa",
+        mvc.perform(jsonRequest(put(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.FLOW + "/" + flowId), Map.of("name", "Flow đã sửa",
                         "status", "INACTIVE", "ruleType", "ALL",
                         "templates", List.of(Map.of("badgeTemplateId", templateId))))
                         .header("Authorization", adminAuth()))
@@ -153,7 +153,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.name").value("Flow đã sửa"))
                 .andExpect(jsonPath("$.data.isActive").value(false));
 
-        adminPost(UrlAdminConstant.Badge.FLOW, Map.of("name", "Sai", "ruleType", "ALL",
+        adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.FLOW, Map.of("name", "Sai", "ruleType", "ALL",
                 "templates", List.of(Map.of("badgeTemplateId", "999999999")))).andExpect(status().isBadRequest());
     }
 
@@ -168,7 +168,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
 
         try {
             setPreOrder(false);
-            mvc.perform(get(UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])))
+            mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data[0].skuId").value(String.valueOf(p[1])))
                     .andExpect(jsonPath("$.data[0].badges.length()").value(1))
@@ -179,17 +179,17 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
             long addressId = createAddress(token);
             Map<String, Object> order = Map.of("addressId", addressId, "shippingMethod", "STANDARD",
                     "paymentMethod", "COD", "items", List.of(Map.of("skuId", p[1], "quantity", 1)));
-            mvc.perform(jsonRequest(post(UrlConstant.Order.BASE), order).header("Authorization", bearer(token)))
+            mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Order.BASE), order).header("Authorization", bearer(token)))
                     .andExpect(status().isBadRequest());
 
             setPreOrder(true);
-            mvc.perform(get(UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])))
+            mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])))
                     .andExpect(jsonPath("$.data[0].badges[0].badgeType").value("PRE_ORDER"));
-            mvc.perform(get(UrlConstant.PreOrder.CURRENT))
+            mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.PreOrder.CURRENT))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.enabled").value(true));
 
-            mvc.perform(jsonRequest(post(UrlConstant.Order.BASE), order).header("Authorization", bearer(token)))
+            mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Order.BASE), order).header("Authorization", bearer(token)))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.grandTotal").value(1_000_000));
         } finally {
@@ -203,7 +203,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
         createPinnedFlow("ALL", saleTemplate);
         long[] p = newProduct(5);
 
-        mvc.perform(get(UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])).param("skuIds", "999999999"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Badge.BASE).param("skuIds", String.valueOf(p[1])).param("skuIds", "999999999"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].badges[0].id").value(saleTemplate))
@@ -213,7 +213,7 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
     private long createAddress(String token) throws Exception {
         String addressBody = json.writeValueAsString(Map.of("recipientName", "Nguyễn A", "phone", "0901234567",
                 "province", "HCM", "district", "Q1", "ward", "P1", "addressLine", "1 Lê Lợi"));
-        return json.readTree(mvc.perform(post(UrlConstant.Me.ADDRESSES).header("Authorization", bearer(token))
+        return json.readTree(mvc.perform(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Me.ADDRESSES).header("Authorization", bearer(token))
                         .contentType("application/json").content(addressBody))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
                 .path("data").path("id").asLong();

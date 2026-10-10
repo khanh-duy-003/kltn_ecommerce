@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.web.AbstractRest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** CMS storefront (/storefront/cms/pages/{slug}) - công khai, chỉ trang PUBLISHED (xem SecurityConfig). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class CmsRest extends AbstractRest {
 

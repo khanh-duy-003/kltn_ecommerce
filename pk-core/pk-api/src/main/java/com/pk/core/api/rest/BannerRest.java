@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.web.AbstractRest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Render banner theo mã vị trí (/storefront/banner/placements/code/{code}/render) - công khai (SecurityConfig). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class BannerRest extends AbstractRest {
 

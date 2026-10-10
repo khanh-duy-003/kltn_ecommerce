@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class PhoneAuthControllerIT extends IntegrationTestBase {
 
-    private static final String BASE = "/api/storefront/auth";
+    private static final String BASE = "/api/v1/storefront/auth";
     private static final String OTP = "123456";
 
     @Test
@@ -66,7 +66,7 @@ class PhoneAuthControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.user.roles", hasItem("CUSTOMER")));
 
         // tài khoản mới đăng nhập được bằng endpoint cũ
-        postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))
+        postJson("/api/v1/auth/login", Map.of("phone", phone, "password", PASSWORD))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isNotEmpty());
 
@@ -129,12 +129,12 @@ class PhoneAuthControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.success").value(true));
 
         // Đặt lại mật khẩu thu hồi mọi phiên cũ: refresh token cũ không dùng được nữa.
-        postJson("/api/auth/refresh", Map.of("refreshToken", oldRefreshToken))
+        postJson("/api/v1/auth/refresh", Map.of("refreshToken", oldRefreshToken))
                 .andExpect(status().isUnauthorized());
 
-        postJson("/api/auth/login", Map.of("phone", phone, "password", "NewPassword2!"))
+        postJson("/api/v1/auth/login", Map.of("phone", phone, "password", "NewPassword2!"))
                 .andExpect(status().isOk());
-        postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))
+        postJson("/api/v1/auth/login", Map.of("phone", phone, "password", PASSWORD))
                 .andExpect(status().isUnauthorized());
 
         // OTP đã dùng rồi: không đặt lại được lần nữa

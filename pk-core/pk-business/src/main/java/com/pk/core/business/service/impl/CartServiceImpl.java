@@ -202,7 +202,10 @@ public class CartServiceImpl implements CartService {
             }
             list.add(new CartRecommendationItemResponseDto(String.valueOf(sku.getId()), p.getSlug(), p.getName(),
                     String.valueOf(p.getId()), String.valueOf(sku.effectivePrice().longValue()),
-                    sku.available(), sku.getStatus()));
+                    sku.available(), sku.getStatus(),
+                    sku.getListPrice() != null && sku.getListPrice().compareTo(sku.effectivePrice()) > 0
+                            ? String.valueOf(sku.getListPrice().longValue()) : "0",
+                    p.getThumbnailUrl()));
         }
 
         boolean hasNext = paged.page() < paged.totalPages();

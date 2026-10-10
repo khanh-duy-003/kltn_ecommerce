@@ -17,12 +17,12 @@ class StorefrontPathAliasIT extends IntegrationTestBase {
         String phone = uniquePhone();
         registerCustomer(phone);
 
-        String token = body(postJson("/api/storefront/auth/login", Map.of("phone", phone, "password", PASSWORD))
+        String token = body(postJson("/api/v1/storefront/auth/login", Map.of("phone", phone, "password", PASSWORD))
                 .andExpect(status().isOk())).get("accessToken").asText();
 
-        mvc.perform(get("/api/storefront/me").header("Authorization", bearer(token)))
+        mvc.perform(get("/api/v1/storefront/me").header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.phone").value(phone));
-        mvc.perform(get("/api/storefront/me")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/storefront/me")).andExpect(status().isUnauthorized());
     }
 }

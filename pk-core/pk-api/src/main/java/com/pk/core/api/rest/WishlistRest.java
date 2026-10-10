@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.WishlistService;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Yêu thích (/storefront/product/customer/wishlist, theo spec FE) - bắt buộc đăng nhập (SecurityConfig). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class WishlistRest extends AbstractRest {
 
@@ -30,7 +32,12 @@ public class WishlistRest extends AbstractRest {
     public BaseRes list(@AuthenticationPrincipal SecurityUser principal,
                         HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(wishlistService.list(principal.getId()));
+            java.util.List<?> items = wishlistService.list(principal.getId());
+            // FE đọc { total, list } (ICustomerWishlistResponse).
+            java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("total", items.size());
+            body.put("list", items);
+            return restSuccessHandle.handleSuccess(body);
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

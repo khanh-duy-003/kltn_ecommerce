@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.AdminAccessService;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** API admin - tài khoản, vai trò và quyền. GET /admin/users và GET /admin/roles theo spec FE; phần tạo/sửa/khoá tài
  * khoản và gán vai trò là mở rộng ngoài spec (chỉ role ADMIN gọi được - xem SecurityConfig). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminAccessRest extends AbstractRest {
 

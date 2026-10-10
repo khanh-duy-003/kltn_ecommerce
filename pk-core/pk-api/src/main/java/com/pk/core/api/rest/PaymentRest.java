@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.PaymentService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * thực bằng chữ ký trong PaymentServiceImpl (xem cảnh báo giới hạn ở đó: chữ ký tự quy ước, chưa phải
  * thuật toán VNPay/MoMo thật). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class PaymentRest extends AbstractRest {
 

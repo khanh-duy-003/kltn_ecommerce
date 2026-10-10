@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.model.constant.admin.UrlAdminConstant;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  * thể bổ sung khi có yêu cầu cụ thể.</p>
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminAuthRest extends AbstractRest {
 

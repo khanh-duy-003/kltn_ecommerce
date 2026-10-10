@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.PreOrderService;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** API admin - cấu hình đặt trước (spec FE nhóm Pre-order). POST trả 200 + cấu hình vừa tạo (theo spec, không phải 201). */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminPreOrderRest extends AbstractRest {
 

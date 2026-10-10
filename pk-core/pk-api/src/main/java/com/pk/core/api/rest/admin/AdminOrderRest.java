@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.OrderService;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  * niệm IDOR ở đây (đã có hasRole("ADMIN") chặn từ SecurityConfig).</p>
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminOrderRest extends AbstractRest {
 

@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** CMS storefront (công khai, chỉ PUBLISHED) và Banner (admin CRUD + render công khai theo mã vị trí). */
 class CmsBannerControllerIT extends IntegrationTestBase {
 
-    private static final String BANNERS = UrlAdminConstant.Banner.BANNERS;
+    private static final String BANNERS = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Banner.BANNERS;
 
     @Autowired BannerPlacementRepo placements;
 
@@ -39,25 +39,25 @@ class CmsBannerControllerIT extends IntegrationTestBase {
         String slug = "trang-" + tag();
         String draftSlug = "nhap-" + tag();
 
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("slug", slug, "name", "Trang công khai",
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("slug", slug, "name", "Trang công khai",
                         "status", "PUBLISHED",
                         "blocks", List.of(Map.of("type", "INFO_CARDS", "sortOrder", 0,
                                 "config", Map.of("cards", List.of(Map.of("title", "Hi")))))))
                         .header("Authorization", admin))
                 .andExpect(status().is2xxSuccessful());
-        mvc.perform(jsonRequest(post(UrlAdminConstant.Cms.PAGES), Map.of("slug", draftSlug, "name", "Bản nháp",
+        mvc.perform(jsonRequest(post(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Cms.PAGES), Map.of("slug", draftSlug, "name", "Bản nháp",
                         "status", "DRAFT")).header("Authorization", admin))
                 .andExpect(status().is2xxSuccessful());
 
-        mvc.perform(get(UrlConstant.Cms.PAGES + "/" + slug))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + slug))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.slug").value(slug))
                 .andExpect(jsonPath("$.data.blocks.length()").value(1))
                 .andExpect(jsonPath("$.data.name").value("Trang công khai"))
                 .andExpect(jsonPath("$.data.blocks[0].type").value("INFO_CARDS"))
                 .andExpect(jsonPath("$.data.blocks[0].config.cards[0].title").value("Hi"));
-        mvc.perform(get(UrlConstant.Cms.PAGES + "/" + draftSlug)).andExpect(status().isNotFound());
-        mvc.perform(get(UrlConstant.Cms.PAGES + "/khong-co-" + tag())).andExpect(status().isNotFound());
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + draftSlug)).andExpect(status().isNotFound());
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/khong-co-" + tag())).andExpect(status().isNotFound());
     }
 
     // ------------------------------------------------------------------ Banner admin
@@ -107,7 +107,7 @@ class CmsBannerControllerIT extends IntegrationTestBase {
                 .andExpect(jsonPath("$.data.actions[0].actionType").value("URL")));
         String id = created.get("id").asText();
 
-        mvc.perform(get(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.code").value(code))
                 .andExpect(jsonPath("$.data.displayType").value("CAROUSEL"))
@@ -118,7 +118,7 @@ class CmsBannerControllerIT extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.title").value("Xin chào"));
-        mvc.perform(get(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.banners.length()").value(1))
                 .andExpect(jsonPath("$.data.banners[0].id").value(id));
@@ -139,14 +139,14 @@ class CmsBannerControllerIT extends IntegrationTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.success").value(true));
         mvc.perform(get(BANNERS + "/" + id).header("Authorization", admin)).andExpect(status().isNotFound());
-        mvc.perform(get(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Banner.PLACEMENTS_BY_CODE + "/" + code + "/render"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.banners.length()").value(0));
     }
 
     @Test
     void renderUnknownPlacementIs404() throws Exception {
-        mvc.perform(get(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/KHONG_CO_" + tag() + "/render"))
+        mvc.perform(get(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Banner.PLACEMENTS_BY_CODE + "/KHONG_CO_" + tag() + "/render"))
                 .andExpect(status().isNotFound());
     }
 

@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.CategoryService;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
  * (AdminCatalogRest, CategoryRest cũ) không nằm trong lần dựng lại này (yêu cầu "ngoài admin").
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class ProductRest extends AbstractRest {
 

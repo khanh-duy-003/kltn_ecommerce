@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.BadgeService;
@@ -18,6 +19,7 @@ import java.util.List;
  * badge-flow do admin tạo, quy tắc PRE_ORDER -> OUT_OF_STOCK -> CAMPAIGN, mỗi SKU tối đa 1 nhãn (xem BadgeService).
  * `channel` (mặc định WEB) là tham số mở rộng ngoài spec để lọc flow theo kênh. */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class BadgeRest extends AbstractRest {
 

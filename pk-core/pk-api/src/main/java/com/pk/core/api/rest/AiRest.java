@@ -1,5 +1,6 @@
 package com.pk.core.api.rest;
 
+import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.AiStylistService;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Gợi ý sản phẩm/set trang sức - KHÔNG cần đăng nhập (permitAll ở SecurityConfig). Xem cảnh báo ở
  * AiStylistService javadoc: heuristic đơn giản, KHÔNG phải AI/ML thật. */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AiRest extends AbstractRest {
 

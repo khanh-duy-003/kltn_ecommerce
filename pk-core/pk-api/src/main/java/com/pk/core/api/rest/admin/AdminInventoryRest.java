@@ -1,5 +1,7 @@
 package com.pk.core.api.rest.admin;
 
+import org.springframework.web.bind.annotation.RequestMapping;
+import com.pk.core.model.constant.UrlConstant;
 import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.service.InventoryService;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * về quyết định thiết kế cuối cùng cho vướng mắc warehouseId đã ghi nhận trước đó).
  */
 @RestController
+@RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION)
 @RequiredArgsConstructor
 public class AdminInventoryRest extends AbstractRest {
 

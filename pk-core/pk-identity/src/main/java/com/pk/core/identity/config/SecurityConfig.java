@@ -41,33 +41,33 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(UrlIdentConstant.Auth.BASE + "/**").permitAll()
+                        .requestMatchers(v1(UrlIdentConstant.Auth.BASE + "/**")).permitAll()
                         // Luồng SĐT + OTP theo spec FE (resolve-phone, đăng ký 3 bước, quên/đặt lại mật khẩu):
                         // công khai vì lúc gọi chưa có token. Chỉ POST - StorefrontAuthRest không có GET nào.
-                        .requestMatchers(HttpMethod.POST, UrlIdentConstant.StorefrontAuth.BASE + "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlIdentConstant.StorefrontAuth.BASE + "/**")).permitAll()
                         // Yêu thích (/storefront/product/customer/wishlist): bắt buộc đăng nhập. PHẢI đứng TRƯỚC rule GET
                         // công khai của Product.BASE bên dưới (Spring Security khớp rule đầu tiên trùng).
-                        .requestMatchers(UrlConstant.Wishlist.BASE + "/**").authenticated()
+                        .requestMatchers(v1(UrlConstant.Wishlist.BASE + "/**")).authenticated()
                         // Giỏ hàng: công khai cho khách vãng lai (header X-Guest-Cart-Id); gộp giỏ vào tài khoản thì bắt buộc
                         // đăng nhập - rule merge cụ thể đặt TRƯỚC rule chung.
-                        .requestMatchers(HttpMethod.POST, UrlConstant.Cart.BASE + "/merge").authenticated()
-                        .requestMatchers(UrlConstant.Cart.BASE, UrlConstant.Cart.BASE + "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlConstant.Cart.BASE + "/merge")).authenticated()
+                        .requestMatchers(v1(UrlConstant.Cart.BASE), v1(UrlConstant.Cart.BASE + "/**")).permitAll()
                         // Storefront đọc catalog: công khai, không cần đăng nhập (xem document/09-tong-hop-api-fe.md mục C)
-                        .requestMatchers(HttpMethod.GET, UrlConstant.Product.BASE + "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Product.BASE + "/**")).permitAll()
                         // AI stylist/set-builder, badge: công khai theo spec FE (mục G/H). Checkout quote (mục D)
                         // spec ghi "Không cần" nhưng thiết kế ở đây dùng addressId đã lưu (giống OrderRest.create),
                         // không hỗ trợ khách vãng lai gửi địa chỉ rời rạc - CỐ Ý bắt buộc đăng nhập (rơi vào
                         // anyRequest().authenticated() mặc định bên dưới, không thêm permitAll ở đây), khác spec.
-                        .requestMatchers(HttpMethod.POST, UrlConstant.Ai.BASE + "/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, UrlConstant.Badge.BASE).permitAll()
-                        .requestMatchers(HttpMethod.GET, UrlConstant.PreOrder.CURRENT).permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlConstant.Ai.BASE + "/**")).permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Badge.BASE)).permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.PreOrder.CURRENT)).permitAll()
                         // CMS storefront (trang đã PUBLISHED theo slug) và render banner theo vị trí: công khai, chỉ GET.
                         // Khách gửi yêu cầu (báo khi có hàng / hỗ trợ đơn / nhận tin): công khai, chỉ POST.
-                        .requestMatchers(HttpMethod.POST, UrlConstant.CustomerRequest.BASE + "/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, UrlConstant.Cms.PAGES + "/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, UrlConstant.Banner.PLACEMENTS_BY_CODE + "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlConstant.CustomerRequest.BASE + "/**")).permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Cms.PAGES + "/**")).permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/**")).permitAll()
                         // Webhook cổng thanh toán: không có Bearer token, tự xác thực bằng chữ ký (mục F)
-                        .requestMatchers(HttpMethod.POST, UrlConstant.Payment.BASE + "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlConstant.Payment.BASE + "/**")).permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
@@ -79,26 +79,26 @@ public class SecurityConfig {
                         // nên gọi thẳng UrlAdminConstant được, không cần constant trung gian. Đặt SAU
                         // rule /actuator/** cụ thể hơn nhưng TRƯỚC anyRequest() mặc định, đúng thứ tự
                         // matcher cụ thể -> rộng dần của Spring Security.
-                        .requestMatchers(HttpMethod.POST, UrlAdminConstant.Auth.LOGIN).permitAll()
+                        .requestMatchers(HttpMethod.POST, v1(UrlAdminConstant.Auth.LOGIN)).permitAll()
                         // Phân quyền khu quản trị theo vai trò: ADMIN toàn quyền; CATALOG_MANAGER chỉ nhóm
                         // danh mục/nội dung; ORDER_MANAGER chỉ nhóm đơn hàng/kho/khách. Quản lý tài khoản, vai trò
                         // và cấu hình đặt trước chỉ ADMIN. Rule cụ thể đặt TRƯỚC rule chung "/admin/**".
-                        .requestMatchers(UrlAdminConstant.Common.BASE + "/auth/**")
+                        .requestMatchers(v1(UrlAdminConstant.Common.BASE + "/auth/**"))
                         .hasAnyRole("ADMIN", "CATALOG_MANAGER", "ORDER_MANAGER")
-                        .requestMatchers(UrlAdminConstant.Common.BASE + "/catalog/**",
-                                UrlAdminConstant.Common.BASE + "/promotions/**",
-                                UrlAdminConstant.Common.BASE + "/vouchers/**",
-                                UrlAdminConstant.Common.BASE + "/cms/**",
-                                UrlAdminConstant.Common.BASE + "/banner/**",
-                                UrlAdminConstant.Common.BASE + "/badge-templates/**",
-                                UrlAdminConstant.Common.BASE + "/badge-flow/**")
+                        .requestMatchers(v1(UrlAdminConstant.Common.BASE + "/catalog/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/promotions/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/vouchers/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/cms/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/banner/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/badge-templates/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/badge-flow/**"))
                         .hasAnyRole("ADMIN", "CATALOG_MANAGER")
-                        .requestMatchers(UrlAdminConstant.Common.BASE + "/orders/**",
-                                UrlAdminConstant.Common.BASE + "/inventory/**",
-                                UrlAdminConstant.Common.BASE + "/customers/**",
-                                UrlAdminConstant.Common.BASE + "/customer-request/**")
+                        .requestMatchers(v1(UrlAdminConstant.Common.BASE + "/orders/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/inventory/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/customers/**"),
+                                v1(UrlAdminConstant.Common.BASE + "/customer-request/**"))
                         .hasAnyRole("ADMIN", "ORDER_MANAGER")
-                        .requestMatchers(UrlAdminConstant.Common.BASE + "/**").hasRole("ADMIN")
+                        .requestMatchers(v1(UrlAdminConstant.Common.BASE + "/**")).hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter))
@@ -108,5 +108,10 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler));
         return http.build();
+    }
+
+    /** Gắn tiền tố /api/v1: Rest gắn bằng @RequestMapping(UrlConstant.Common.API + UrlConstant.Common.VERSION), còn các hằng route là đường dẫn tương đối. */
+    private static String v1(String relativePath) {
+        return UrlConstant.Common.API + UrlConstant.Common.VERSION + relativePath;
     }
 }

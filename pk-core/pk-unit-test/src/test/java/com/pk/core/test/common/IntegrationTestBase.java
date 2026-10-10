@@ -68,7 +68,7 @@ public abstract class IntegrationTestBase {
 
     /** Đăng ký khách hàng mới qua API; trả về body TokenResponseDto. */
     protected JsonNode registerCustomer(String phone) throws Exception {
-        return body(postJson("/api/auth/register",
+        return body(postJson("/api/v1/auth/register",
                 Map.of("phone", phone, "password", PASSWORD, "fullName", "Test User")));
     }
 
@@ -82,7 +82,7 @@ public abstract class IntegrationTestBase {
             adminRole = roles.create(new RoleEntity(RoleEntity.ADMIN));
         }
         users.addRole(admin.getId(), adminRole.getId());
-        return body(postJson("/api/auth/login", Map.of("phone", phone, "password", PASSWORD))).get("accessToken").asText();
+        return body(postJson("/api/v1/auth/login", Map.of("phone", phone, "password", PASSWORD))).get("accessToken").asText();
     }
 
     protected String customerAccessToken() throws Exception {

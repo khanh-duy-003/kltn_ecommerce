@@ -26,8 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Yêu cầu khách hàng: khách gửi công khai (3 loại) + admin xem/đổi trạng thái. */
 class CustomerRequestControllerIT extends IntegrationTestBase {
 
-    private static final String PUBLIC = UrlConstant.CustomerRequest.BASE;
-    private static final String ADMIN = UrlAdminConstant.CustomerRequest.BASE;
+    private static final String PUBLIC = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.CustomerRequest.BASE;
+    private static final String ADMIN = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.CustomerRequest.BASE;
 
     @Autowired CategoryRepo categories;
     @Autowired ProductRepo products;
