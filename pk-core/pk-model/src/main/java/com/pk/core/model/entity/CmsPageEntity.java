@@ -38,6 +38,17 @@ public class CmsPageEntity extends BaseEntity {
     @Column(name = "status")
     private String status = DRAFT;
 
+    @Column(name = "locale")
+    private String locale = "vi";
+
+    /** Trang tắt (false) không được phục vụ ở storefront dù status = PUBLISHED. */
+    @Column(name = "is_active")
+    private boolean active = true;
+
+    /** SEO của trang dạng JSON text ({title, description, keywords, canonicalUrl, imageUrl}). */
+    @Column(name = "seo")
+    private String seo;
+
     public CmsPageEntity(String slug, String title, String status) {
         this.slug = slug;
         this.title = title;

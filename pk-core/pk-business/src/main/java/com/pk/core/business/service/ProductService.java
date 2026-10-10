@@ -2,6 +2,7 @@ package com.pk.core.business.service;
 
 import com.pk.core.common.web.PageResponse;
 import com.pk.core.model.dto.request.AdminCreateProductRequestDto;
+import com.pk.core.model.dto.request.AdminSkuRequestDto;
 import com.pk.core.model.dto.request.AdminUpdateProductRequestDto;
 import com.pk.core.model.dto.response.ProductResponseDto;
 import com.pk.core.model.dto.response.ProductSkuResponseDto;
@@ -59,4 +60,24 @@ public interface ProductService {
 
     /** Tìm SKU theo mã/tên (không giới hạn theo sản phẩm) - GET /admin/catalog/variants. */
     List<ProductSkuResponseDto> searchVariants(String keyword);
+
+    /** Đưa sản phẩm lên bán: cần ít nhất 1 SKU chưa ARCHIVED có giá niêm yết > 0; các SKU DRAFT chuyển PUBLISHED,
+     * bảo đảm có 1 SKU mặc định - PATCH /admin/catalog/products/{productId}/publish. */
+    ProductResponseDto publish(Long productId);
+
+    /** Gỡ sản phẩm về DRAFT (không bán) - PATCH /admin/catalog/products/{productId}/unpublish. */
+    ProductResponseDto unpublish(Long productId);
+
+    /** Thêm SKU cho sản phẩm đã tạo (SKU mới ở DRAFT nếu không gửi status) - POST /admin/catalog/products/{productId}/variants. */
+    ProductSkuResponseDto addVariant(Long productId, AdminSkuRequestDto req);
+
+    /** Sửa SKU (giá, size, mặc định, status...). Tồn kho chỉ đổi qua inventory - PUT /admin/catalog/products/{productId}/variants/{skuId}. */
+    ProductSkuResponseDto updateVariant(Long productId, Long skuId, AdminSkuRequestDto req);
+
+    /** Thuộc tính đã gán cho SKU - GET /admin/catalog/products/{productId}/variants/{skuId}/attributes. */
+    java.util.List<java.util.Map<String, Object>> findVariantAttributes(Long productId, Long skuId);
+
+    /** Thay toàn bộ thuộc tính của SKU - PUT /admin/catalog/products/{productId}/variants/{skuId}/attributes. */
+    ProductSkuResponseDto setVariantAttributes(Long productId, Long skuId,
+                                               com.pk.core.model.dto.request.AdminSkuAttributesRequestDto req);
 }

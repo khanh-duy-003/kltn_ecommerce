@@ -11,4 +11,7 @@ public interface CheckoutService {
      * kiểm tra đủ hàng (available >= qty) để báo lỗi sớm, nhưng không "giữ" - đơn thật vẫn có thể
      * hết hàng giữa lúc quote và lúc đặt (giống mọi sàn TMĐT khác, chấp nhận được). */
     QuoteResponseDto quote(Long userId, QuoteRequestDto req);
+
+    /** Báo giá cho khách vãng lai (không cần đăng nhập). */
+    QuoteResponseDto quoteGuest(com.pk.core.model.dto.request.GuestOrderRequestDto req);
 }

@@ -65,6 +65,15 @@ public class VoucherServiceImpl implements VoucherService {
         }
     }
 
+    @Transactional
+    @Override
+    public void releaseUsage(String code) {
+        VoucherEntity v = code == null || code.isBlank() ? null : vouchers.findByCode(code.trim().toUpperCase(Locale.ROOT));
+        if (v != null) {
+            vouchers.decrementUsage(v.getId());
+        }
+    }
+
     // ===================== ADMIN (mục K spec) =====================
 
     @Transactional(readOnly = true)

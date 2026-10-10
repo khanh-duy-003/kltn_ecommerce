@@ -21,4 +21,9 @@ public class CmsBlockResponseDto extends UpdateDto {
     private int sortOrder;
     private Map<String, Object> config;
     private String targetSegment;
+    private boolean visible;
+
+    public boolean getIsVisible() {
+        return visible;
+    }
 }

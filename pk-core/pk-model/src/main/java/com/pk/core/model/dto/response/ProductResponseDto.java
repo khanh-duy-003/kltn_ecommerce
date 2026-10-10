@@ -46,13 +46,15 @@ public class ProductResponseDto extends BaseDto {
     private Date publishedAt;
     /** Slug danh mục (service gán sau khi dựng DTO) - dùng cho field FE `category.slug`. */
     private String categorySlug;
+    /** Ảnh/video trong thư viện media (service nạp sau khi dựng DTO). */
+    private List<ProductMediaResponseDto> media = new ArrayList<>();
 
     public static ProductResponseDto from(ProductEntity p, String categoryName, BigDecimal priceFrom,
                                            List<ProductSkuResponseDto> skus, List<CollectionResponseDto> collections) {
         return BaseDto.of(new ProductResponseDto(p.getId(), p.getCode(), p.getName(), p.getSlug(),
                 p.getShortDescription(), p.getDescription(), p.getStatus(), p.getCategoryId(), categoryName,
                 p.getMaterial(), p.getOccasion(), p.getThumbnailUrl(), priceFrom, skus, collections,
-                p.getPublishedAt(), null), p);
+                p.getPublishedAt(), null, new ArrayList<>()), p);
     }
 
     // =====================================================================================================
@@ -203,8 +205,39 @@ public class ProductResponseDto extends BaseDto {
     }
 
     public List<Map<String, Object>> getGallery() {
+        return galleryFor(null);
+    }
+
+    /** Gallery của 1 SKU: media riêng của SKU nếu có, không thì media chung; chưa có media thì dùng thumbnail. */
+    private List<Map<String, Object>> galleryFor(Long skuId) {
+        List<ProductMediaResponseDto> source = new ArrayList<>();
+        if (media != null && skuId != null) {
+            String id = String.valueOf(skuId);
+            for (ProductMediaResponseDto m : media) {
+                if (id.equals(m.getSkuId())) {
+                    source.add(m);
+                }
+            }
+        }
+        if (source.isEmpty() && media != null) {
+            for (ProductMediaResponseDto m : media) {
+                if (m.getSkuId() == null) {
+                    source.add(m);
+                }
+            }
+        }
         List<Map<String, Object>> list = new ArrayList<>();
-        if (thumbnailUrl != null && !thumbnailUrl.isBlank()) {
+        for (ProductMediaResponseDto m : source) {
+            Map<String, Object> g = new LinkedHashMap<>();
+            g.put("id", m.getId());
+            g.put("url", m.getUrl());
+            g.put("alt", m.getAlt());
+            g.put("type", m.getType());
+            g.put("sortOrder", m.getSortOrder());
+            g.put("isPrimary", m.isPrimary());
+            list.add(g);
+        }
+        if (list.isEmpty() && thumbnailUrl != null && !thumbnailUrl.isBlank()) {
             Map<String, Object> g = new LinkedHashMap<>();
             g.put("url", thumbnailUrl);
             g.put("type", "IMAGE");
@@ -321,7 +354,7 @@ public class ProductResponseDto extends BaseDto {
         v.put("stockStatus", feStockStatus(s));
         v.put("isDefault", s.isDefault());
         v.put("image", thumbnailUrl == null ? "" : thumbnailUrl);
-        v.put("gallery", getGallery());
+        v.put("gallery", galleryFor(s.getId()));
         List<Map<String, Object>> values = new ArrayList<>();
         Map<String, String> flat = new LinkedHashMap<>();
         for (int i = 0; i < ATTRS.length; i++) {
@@ -338,23 +371,92 @@ public class ProductResponseDto extends BaseDto {
             values.add(av);
             flat.put(ATTRS[i][0], val);
         }
+        // Thuộc tính cấu hình admin gán cho SKU (bảng sku_attribute_values); trùng code với 4 thuộc tính có sẵn thì bỏ qua.
+        if (s.getAttributeBindings() != null) {
+            int idx = ATTRS.length;
+            for (Map<String, Object> b : s.getAttributeBindings()) {
+                String code = String.valueOf(b.get("code"));
+                if (flat.containsKey(code)) {
+                    continue;
+                }
+                Map<String, Object> def = new LinkedHashMap<>();
+                def.put("id", b.get("id"));
+                def.put("name", b.get("name"));
+                def.put("code", code);
+                def.put("index", idx++);
+                def.put("displayType", "TEXT");
+                Map<String, Object> av = new LinkedHashMap<>();
+                av.put("id", code + ":" + b.get("value"));
+                av.put("code", b.get("value"));
+                av.put("value", b.get("value"));
+                av.put("image", null);
+                av.put("attribute", def);
+                values.add(av);
+                flat.put(code, String.valueOf(b.get("value")));
+            }
+        }
         v.put("attributeValues", values);
         v.put("attributes", flat);
         v.put("pricing", pricingOf(s));
         return v;
     }
 
-    /** Bộ chọn biến thể: chỉ thuộc tính có từ 2 giá trị khác nhau trở lên mới cần chọn. */
+    /** Khoá thuộc tính dùng cho bộ chọn: 4 thuộc tính có sẵn + thuộc tính admin gán cho SKU (theo code, không trùng). */
+    private List<String[]> selectorKeys() {
+        List<String[]> keys = new ArrayList<>();
+        for (String[] a : ATTRS) {
+            keys.add(new String[] {a[0], a[1], null});
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        for (String[] a : ATTRS) {
+            seen.add(a[0]);
+        }
+        if (skus != null) {
+            for (ProductSkuResponseDto s : skus) {
+                if (s.getAttributeBindings() == null) {
+                    continue;
+                }
+                for (Map<String, Object> b : s.getAttributeBindings()) {
+                    String code = String.valueOf(b.get("code"));
+                    if (seen.add(code)) {
+                        keys.add(new String[] {code, String.valueOf(b.get("name")), String.valueOf(b.get("id"))});
+                    }
+                }
+            }
+        }
+        return keys;
+    }
+
+    private static String valueByKey(ProductSkuResponseDto s, String code) {
+        for (int i = 0; i < ATTRS.length; i++) {
+            if (ATTRS[i][0].equals(code)) {
+                return attrValue(s, i);
+            }
+        }
+        if (s.getAttributeBindings() != null) {
+            for (Map<String, Object> b : s.getAttributeBindings()) {
+                if (code.equals(String.valueOf(b.get("code")))) {
+                    return String.valueOf(b.get("value"));
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Bộ chọn biến thể: chỉ thuộc tính có từ 2 giá trị khác nhau trở lên mới cần chọn (gồm cả thuộc tính admin gán cho SKU). */
     public List<Map<String, Object>> getVariantSelectors() {
         List<Map<String, Object>> selectors = new ArrayList<>();
         if (skus == null || skus.size() < 2) {
             return selectors;
         }
         ProductSkuResponseDto def = defaultSku();
-        for (int i = 0; i < ATTRS.length; i++) {
+        List<String[]> keys = selectorKeys();
+        for (int i = 0; i < keys.size(); i++) {
+            String[] key = keys.get(i);
+            String code = key[0];
             Set<String> distinct = new LinkedHashSet<>();
             for (ProductSkuResponseDto s : skus) {
-                String val = attrValue(s, i);
+                String val = valueByKey(s, code);
                 if (val != null) {
                     distinct.add(val);
                 }
@@ -362,19 +464,19 @@ public class ProductResponseDto extends BaseDto {
             if (distinct.size() < 2) {
                 continue;
             }
-            String selected = def == null ? null : attrValue(def, i);
+            String selected = def == null ? null : valueByKey(def, code);
             List<Map<String, Object>> options = new ArrayList<>();
             for (String val : distinct) {
                 List<String> ids = new ArrayList<>();
                 boolean available = false;
                 for (ProductSkuResponseDto s : skus) {
-                    if (val.equals(attrValue(s, i))) {
+                    if (val.equals(valueByKey(s, code))) {
                         ids.add(String.valueOf(s.getId()));
                         available = available || !"OUT_OF_STOCK".equals(s.getStockStatus());
                     }
                 }
                 Map<String, Object> o = new LinkedHashMap<>();
-                o.put("id", ATTRS[i][0] + ":" + val);
+                o.put("id", code + ":" + val);
                 o.put("code", val);
                 o.put("label", val);
                 o.put("value", val);
@@ -384,8 +486,14 @@ public class ProductResponseDto extends BaseDto {
                 o.put("variationIds", ids);
                 options.add(o);
             }
+            Map<String, Object> attrDef = new LinkedHashMap<>();
+            attrDef.put("id", key[2] != null ? key[2] : code);
+            attrDef.put("name", key[1]);
+            attrDef.put("code", code);
+            attrDef.put("index", i);
+            attrDef.put("displayType", "TEXT");
             Map<String, Object> sel = new LinkedHashMap<>();
-            sel.put("attribute", attributeDef(i));
+            sel.put("attribute", attrDef);
             sel.put("options", options);
             selectors.add(sel);
         }

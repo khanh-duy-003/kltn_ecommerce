@@ -348,6 +348,25 @@ public class BadgeServiceImpl implements BadgeService {
         if (req.getImage() != null) {
             t.setImage(req.getImage());
         }
+        if (req.getStatus() != null) {
+            // Cho phép chuyển DRAFT -> ACTIVE (và ngược lại) qua PATCH.
+            t.setStatus(requireIn(req.getStatus(), BadgeTemplateEntity.STATUSES, "status"));
+        }
+        if (req.getIcon() != null) {
+            t.setIcon(req.getIcon());
+        }
+        if (req.getIconMobile() != null) {
+            t.setIconMobile(req.getIconMobile());
+        }
+        if (req.getImageMobile() != null) {
+            t.setImageMobile(req.getImageMobile());
+        }
+        if (req.getAssetMeta() != null) {
+            t.setAssetMeta(toJson(req.getAssetMeta()));
+        }
+        if (req.getDefaultPriorityWeight() != null) {
+            t.setDefaultPriorityWeight(req.getDefaultPriorityWeight());
+        }
         t.touch();
         templates.update(t);
         return toDto(t);

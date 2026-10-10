@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -32,11 +35,13 @@ public class ProductSkuResponseDto extends BaseDto {
     private int availableStock;
     private String stockStatus;
     private boolean isDefault;
+    /** Thuộc tính cấu hình (product_attributes) đã gán cho SKU: [{id, code, name, type, value, values[]}]. */
+    private List<Map<String, Object>> attributeBindings = new ArrayList<>();
 
     public static ProductSkuResponseDto from(ProductSkuEntity s) {
         return BaseDto.of(new ProductSkuResponseDto(s.getId(), s.getSkuCode(), s.getName(), s.getStatus(),
                 s.getMaterial(), s.getGemstone(), s.getSizeLabel(), s.getMetalColorLabel(), s.getCaratWeight(),
                 s.getWeightGram(), s.getListPrice(), s.getSalePrice(), s.available(), s.stockStatus(),
-                s.isDefault()), s);
+                s.isDefault(), new ArrayList<>()), s);
     }
 }

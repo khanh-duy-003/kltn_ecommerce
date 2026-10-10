@@ -40,6 +40,8 @@ public final class TableConstant {
 
     // Admin - Catalog: thuộc tính sản phẩm (V2__admin_extensions.sql, mới 2026-09-29)
     public static final String PRODUCT_ATTRIBUTES = "product_attributes";
+    public static final String SKU_ATTRIBUTE_VALUES = "sku_attribute_values";
+    public static final String PRODUCT_MEDIA = "product_media";
 
     // Admin - CMS (V2__admin_extensions.sql, mới 2026-09-29, chưa có entity, để sẵn hằng)
     public static final String CMS_PAGES = "cms_pages";

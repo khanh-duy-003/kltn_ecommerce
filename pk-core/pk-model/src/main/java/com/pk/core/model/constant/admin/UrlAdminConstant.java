@@ -44,6 +44,8 @@ public class UrlAdminConstant {
         public final String CATEGORIES = BASE + "/categories";
         public final String COLLECTIONS = BASE + "/collections";
         public final String ATTRIBUTES = BASE + "/attributes";
+        /** POST multipart (field `file`) - upload ảnh/video dùng cho media sản phẩm, banner, CMS. */
+        public final String UPLOAD = BASE + "/upload";
     }
 
     /** AdminPromotionVoucherRest (pk-api - mục K spec). */
@@ -104,6 +106,7 @@ public class UrlAdminConstant {
     @UtilityClass
     public static class Banner {
         public final String BANNERS = Common.BASE + "/banner/banners";
+        public final String PLACEMENTS = Common.BASE + "/banner/placements";
     }
 
     /** AdminCustomerRequestRest (pk-api, gói api.rest.admin - spec FE nhóm Customer Request). Sub-path /back-in-stock,

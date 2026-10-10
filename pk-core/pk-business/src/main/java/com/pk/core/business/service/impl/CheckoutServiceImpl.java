@@ -50,9 +50,18 @@ public class CheckoutServiceImpl implements CheckoutService {
         if (address == null) {
             throw new ResourceNotFoundException("Địa chỉ giao hàng", "Address", req.getAddressId());
         }
+        return quoteItems(req.getItems(), req.getVoucherCode(), req.getShippingMethod());
+    }
 
+    @Transactional(readOnly = true)
+    @Override
+    public QuoteResponseDto quoteGuest(com.pk.core.model.dto.request.GuestOrderRequestDto req) {
+        return quoteItems(req.getItems(), req.getVoucherCode(), req.getShippingMethod());
+    }
+
+    private QuoteResponseDto quoteItems(List<OrderItemRequestDto> requestItems, String voucherCode, String shippingMethod) {
         Map<Long, Integer> qtyBySku = new LinkedHashMap<>();
-        for (OrderItemRequestDto line : req.getItems()) {
+        for (OrderItemRequestDto line : requestItems) {
             qtyBySku.merge(line.getSkuId(), line.getQuantity(), Integer::sum);
         }
 
@@ -89,10 +98,10 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
 
         BigDecimal voucherDiscount = BigDecimal.ZERO;
-        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
+        if (voucherCode != null && !voucherCode.isBlank()) {
             // Voucher tính trên phần còn lại sau khi đã trừ khuyến mãi sản phẩm.
             BigDecimal payable = subtotal.subtract(productDiscount);
-            VoucherEntity voucher = voucherService.validate(req.getVoucherCode(), payable);
+            VoucherEntity voucher = voucherService.validate(voucherCode, payable);
             voucherDiscount = voucher.computeDiscount(payable);
         }
 
@@ -103,7 +112,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         QuoteSummaryResponseDto summary = new QuoteSummaryResponseDto(subtotal, productDiscount, voucherDiscount,
                 shippingFee, grandTotal, itemCount);
 
-        return new QuoteResponseDto(items, summary, estimatedDeliveryDate(req.getShippingMethod()));
+        return new QuoteResponseDto(items, summary, estimatedDeliveryDate(shippingMethod));
     }
 
     /** CHƯA có logistics thật (thời gian giao theo khu vực/đơn vị vận chuyển) - ước lượng đơn giản:

@@ -18,4 +18,8 @@ public interface CartItemRepo extends PkRepo<CartItemEntity, Long> {
 
     @Modifying
     int deleteByCartId(@Param("cartId") Long cartId);
+
+    /** Xoá đúng 1 dòng (SKU) khỏi giỏ. Trả 1 nếu có xoá. */
+    @Modifying
+    int deleteByCartIdAndSkuId(@Param("cartId") Long cartId, @Param("skuId") Long skuId);
 }

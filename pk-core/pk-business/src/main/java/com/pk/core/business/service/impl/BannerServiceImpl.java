@@ -191,11 +191,17 @@ public class BannerServiceImpl implements BannerService {
         }
     }
 
+    /** Lưu DB chỉ với key camelCase (không lẫn các key snake_case tính toán dành cho response FE). */
     private String writeActions(List<BannerActionRequestDto> actions) {
-        List<BannerActionResponseDto> out = new ArrayList<>();
+        List<java.util.Map<String, Object>> out = new ArrayList<>();
         for (BannerActionRequestDto a : actions) {
-            out.add(new BannerActionResponseDto(a.getActionType(), a.getActionTarget(), a.getCtaText(),
-                    a.getCtaBg(), a.getCtaColor()));
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("actionType", a.getActionType());
+            m.put("actionTarget", a.getActionTarget());
+            m.put("ctaText", a.getCtaText());
+            m.put("ctaBg", a.getCtaBg());
+            m.put("ctaColor", a.getCtaColor());
+            out.add(m);
         }
         try {
             return objectMapper.writeValueAsString(out);

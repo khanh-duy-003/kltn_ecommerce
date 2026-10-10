@@ -3,6 +3,7 @@ package com.pk.core.model.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,4 +31,7 @@ public class AdminCmsBlockRequestDto {
     private Map<String, Object> config;
 
     private String targetSegment;
+    /** Hiển thị block ở storefront (bỏ trống: mặc định bật khi tạo, giữ nguyên khi sửa). */
+    @JsonAlias("isVisible")
+    private Boolean visible;
 }

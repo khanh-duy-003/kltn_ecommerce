@@ -66,6 +66,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, v1(UrlConstant.CustomerRequest.BASE + "/**")).permitAll()
                         .requestMatchers(HttpMethod.GET, v1(UrlConstant.Cms.PAGES + "/**")).permitAll()
                         .requestMatchers(HttpMethod.GET, v1(UrlConstant.Banner.PLACEMENTS_BY_CODE + "/**")).permitAll()
+                        // Khách vãng lai: đặt hàng, báo giá, tra cứu đơn (mã đơn + SĐT) không cần đăng nhập.
+                        .requestMatchers(HttpMethod.POST, v1(UrlConstant.Order.GUEST), v1(UrlConstant.Checkout.QUOTE_GUEST)).permitAll()
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Order.GUEST + "/*")).permitAll()
+                        // File ảnh/video đã upload: công khai, chỉ GET.
+                        .requestMatchers(HttpMethod.GET, v1(UrlConstant.Storefront.FILES + "/**")).permitAll()
                         // Webhook cổng thanh toán: không có Bearer token, tự xác thực bằng chữ ký (mục F)
                         .requestMatchers(HttpMethod.POST, v1(UrlConstant.Payment.BASE + "/**")).permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()

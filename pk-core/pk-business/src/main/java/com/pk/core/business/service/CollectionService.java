@@ -18,4 +18,10 @@ public interface CollectionService {
 
     /** Sửa bộ sưu tập - Admin Catalog mục J: PUT /admin/catalog/collections/{collectionId}. */
     CollectionResponseDto update(Long collectionId, AdminCollectionRequestDto req);
+
+    /** Thêm sản phẩm vào bộ sưu tập (bỏ qua id đã có) - POST /admin/catalog/collections/{collectionId}/products. */
+    CollectionResponseDto addProducts(Long collectionId, List<Long> productIds);
+
+    /** Bỏ sản phẩm khỏi bộ sưu tập - DELETE /admin/catalog/collections/{collectionId}/products/{productId}. */
+    CollectionResponseDto removeProduct(Long collectionId, Long productId);
 }

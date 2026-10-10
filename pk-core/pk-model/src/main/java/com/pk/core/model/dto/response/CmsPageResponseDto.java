@@ -21,9 +21,16 @@ public class CmsPageResponseDto extends BaseDto {
     private String slug;
     private String status;
     private List<CmsBlockResponseDto> blocks;
+    private String locale;
+    private boolean active;
+    private java.util.Map<String, Object> seo;
 
-    public static CmsPageResponseDto from(CmsPageEntity e, List<CmsBlockResponseDto> blocks) {
+    public static CmsPageResponseDto from(CmsPageEntity e, List<CmsBlockResponseDto> blocks, java.util.Map<String, Object> seo) {
         return BaseDto.of(new CmsPageResponseDto(String.valueOf(e.getId()), e.getTitle(), e.getSlug(), e.getStatus(),
-                blocks), e);
+                blocks, e.getLocale(), e.isActive(), seo), e);
+    }
+
+    public boolean getIsActive() {
+        return active;
     }
 }

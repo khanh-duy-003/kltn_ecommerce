@@ -32,6 +32,8 @@ public class UrlConstant {
     @UtilityClass
     public static class Storefront {
         public final String BASE = Common.BASE + "/storefront";
+        /** GET công khai - phục vụ file đã upload (ảnh/video). */
+        public final String FILES = BASE + "/files";
     }
 
     /** ProductRest (pk-api) - danh sách/chi tiết sản phẩm, danh mục, bộ sưu tập cho storefront. */
@@ -57,6 +59,8 @@ public class UrlConstant {
     public static class Order {
         public final String BASE = Storefront.BASE + "/order";
         /** Chi tiết/huỷ theo mã đơn: BASE + "/{orderCode}"(/cancel). */
+        /** Đặt hàng khách vãng lai (POST) và tra cứu đơn khách vãng lai (GET GUEST + "/{code}?phone="): công khai. */
+        public final String GUEST = BASE + "/guest";
     }
 
     /** CheckoutRest (pk-api) - xem trước giá đơn hàng, không cần đăng nhập (dựa cart context gửi
@@ -64,6 +68,8 @@ public class UrlConstant {
     @UtilityClass
     public static class Checkout {
         public final String QUOTE = Storefront.BASE + "/checkout/quote";
+        /** Báo giá cho khách vãng lai (công khai). */
+        public final String QUOTE_GUEST = QUOTE + "/guest";
     }
 
     /** PaymentRest (pk-api) - webhook callback từ cổng thanh toán, không cần đăng nhập (verify chữ

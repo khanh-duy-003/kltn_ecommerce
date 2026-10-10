@@ -228,4 +228,56 @@ class CmsBlocksControllerIT extends IntegrationTestBase {
         org.junit.jupiter.api.Assertions.assertEquals(201, createPageWithCarousel(Map.of("header", Map.of("title", "x"),
                 "dataSource", Map.of("filterType", "NEW_ARRIVALS"))));
     }
+
+    @Test
+    void hiddenBlockIsStoredButNotServedAtStorefront() throws Exception {
+        String slug = "trang-" + tag();
+        JsonNode page = body(mvc.perform(jsonRequest(post(pagesPath()), Map.of("name", "Trang", "slug", slug,
+                        "status", "PUBLISHED", "blocks", List.of(
+                                Map.of("type", "INFO_CARDS", "sortOrder", 0, "config", Map.of("cards", List.of()), "isVisible", true),
+                                Map.of("type", "IMAGE_GALLERY", "sortOrder", 1, "config", Map.of("images", List.of()), "isVisible", false))))
+                        .header("Authorization", admin()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.blocks.length()").value(2))
+                .andExpect(jsonPath("$.data.blocks[1].isVisible").value(false)));
+        String url = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + slug;
+        mvc.perform(get(url)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.blocks.length()").value(1))
+                .andExpect(jsonPath("$.data.blocks[0].type").value("INFO_CARDS"));
+
+        // Bật lại block ẩn qua PUT block -> storefront trả đủ 2 block.
+        String hiddenId = page.get("blocks").get(1).get("id").asText();
+        mvc.perform(jsonRequest(put(pagesPath() + "/" + page.get("id").asLong() + "/blocks/" + hiddenId),
+                        Map.of("type", "IMAGE_GALLERY", "sortOrder", 1, "config", Map.of("images", List.of()), "isVisible", true))
+                        .header("Authorization", admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isVisible").value(true));
+        mvc.perform(get(url)).andExpect(jsonPath("$.data.blocks.length()").value(2));
+    }
+
+    @Test
+    void pageSeoLocaleAndActiveAreStoredAndServed() throws Exception {
+        String slug = "trang-" + tag();
+        Map<String, Object> seo = Map.of("title", "Tiêu đề SEO", "description", "Mô tả", "keywords", "nhẫn,vàng");
+        JsonNode created = body(mvc.perform(jsonRequest(post(pagesPath()), Map.of("name", "Trang", "slug", slug,
+                        "status", "PUBLISHED", "locale", "en", "isActive", true, "seo", seo))
+                        .header("Authorization", admin()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.locale").value("en"))
+                .andExpect(jsonPath("$.data.seo.title").value("Tiêu đề SEO")));
+        String url = UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlConstant.Cms.PAGES + "/" + slug;
+        mvc.perform(get(url)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page.locale").value("en"))
+                .andExpect(jsonPath("$.data.page.seo.title").value("Tiêu đề SEO"))
+                .andExpect(jsonPath("$.data.page.seo.description").value("Mô tả"));
+
+        // Tắt trang: vẫn PUBLISHED nhưng storefront trả 404; request không gửi seo/locale thì giữ nguyên.
+        mvc.perform(jsonRequest(put(pagesPath() + "/" + created.get("id").asLong()),
+                        Map.of("name", "Trang", "slug", slug, "isActive", false)).header("Authorization", admin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isActive").value(false))
+                .andExpect(jsonPath("$.data.locale").value("en"))
+                .andExpect(jsonPath("$.data.seo.title").value("Tiêu đề SEO"));
+        mvc.perform(get(url)).andExpect(status().isNotFound());
+    }
 }

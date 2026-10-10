@@ -8,6 +8,7 @@ import com.pk.core.business.web.AbstractRest;
 import com.pk.core.common.web.BaseRes;
 import com.pk.core.identity.security.model.SecurityUser;
 import com.pk.core.model.constant.UrlConstant;
+import com.pk.core.model.dto.request.GuestOrderRequestDto;
 import com.pk.core.model.dto.request.QuoteRequestDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +35,17 @@ public class CheckoutRest extends AbstractRest {
                           HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(checkoutService.quote(principal.getId(), request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    /** Báo giá cho khách vãng lai (công khai): địa chỉ gửi kèm, không lưu. */
+    @PostMapping(UrlConstant.Checkout.QUOTE_GUEST)
+    public BaseRes quoteGuest(@Valid @RequestBody GuestOrderRequestDto request,
+                              HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(checkoutService.quoteGuest(request));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

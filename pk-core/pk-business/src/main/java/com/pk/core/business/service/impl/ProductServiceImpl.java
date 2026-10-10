@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 
 import com.pk.core.business.repository.CategoryRepo;
 import com.pk.core.business.repository.CollectionRepo;
+import com.pk.core.business.repository.ProductAttributeRepo;
+import com.pk.core.business.repository.ProductMediaRepo;
 import com.pk.core.business.repository.ProductRepo;
 import com.pk.core.business.repository.ProductSkuRepo;
+import com.pk.core.business.repository.SkuAttributeValueRepo;
 import com.pk.core.business.service.ProductService;
 import com.pk.core.business.service.PromotionPricingService;
 import com.pk.core.common.exception.BusinessException;
@@ -14,21 +17,28 @@ import com.pk.core.common.exception.ResourceNotFoundException;
 import com.pk.core.common.util.SlugUtil;
 import com.pk.core.common.web.PageResponse;
 import com.pk.core.model.dto.request.AdminCreateProductRequestDto;
+import com.pk.core.model.dto.request.AdminSkuAttributesRequestDto;
 import com.pk.core.model.dto.request.AdminSkuRequestDto;
 import com.pk.core.model.dto.request.AdminUpdateProductRequestDto;
 import com.pk.core.model.dto.response.CategoryResponseDto;
 import com.pk.core.model.dto.response.CollectionResponseDto;
+import com.pk.core.model.dto.response.ProductMediaResponseDto;
 import com.pk.core.model.dto.response.ProductResponseDto;
 import com.pk.core.model.dto.response.ProductSkuResponseDto;
 import com.pk.core.model.entity.CategoryEntity;
 import com.pk.core.model.entity.ProductEntity;
+import com.pk.core.model.entity.ProductAttributeEntity;
 import com.pk.core.model.entity.ProductSkuEntity;
+import com.pk.core.model.entity.SkuAttributeValueEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -49,6 +59,9 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepo categories;
     private final CollectionRepo collections;
     private final PromotionPricingService promotionPricing;
+    private final ProductAttributeRepo attributeDefs;
+    private final SkuAttributeValueRepo skuAttributes;
+    private final ProductMediaRepo productMedia;
 
     @Transactional(readOnly = true)
     @Override
@@ -111,6 +124,7 @@ public class ProductServiceImpl implements ProductService {
                     return dto;
                 })
                 .toList();
+        attachBindings(p.getId(), publishedSkus);
 
         BigDecimal priceFrom = publishedSkus.stream()
                 .map(dto -> dto.getSalePrice() != null ? dto.getSalePrice() : dto.getListPrice())
@@ -126,6 +140,7 @@ public class ProductServiceImpl implements ProductService {
         ProductResponseDto dto = ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
                 publishedSkus, productCollections);
         dto.setCategorySlug(category != null ? category.getSlug() : null);
+        dto.setMedia(productMedia.findByProductId(p.getId()).stream().map(ProductMediaResponseDto::from).toList());
         return dto;
     }
 
@@ -205,6 +220,7 @@ public class ProductServiceImpl implements ProductService {
             productSkus.create(sku);
             createdSkus.add(sku);
         }
+        recalcBasePrice(p, createdSkus);
 
         return toAdminDto(p, createdSkus);
     }
@@ -251,7 +267,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductSkuResponseDto> findVariantsByProductId(Long productId) {
         requireProduct(productId);
-        return productSkus.findByProductId(productId).stream().map(ProductSkuResponseDto::from).toList();
+        List<ProductSkuResponseDto> dtos = productSkus.findByProductId(productId).stream()
+                .map(ProductSkuResponseDto::from).toList();
+        attachBindings(productId, dtos);
+        return dtos;
     }
 
     @Transactional(readOnly = true)
@@ -279,6 +298,7 @@ public class ProductServiceImpl implements ProductService {
         CategoryEntity category = p.getCategoryId() != null ? categories.findOne(p.getCategoryId()) : null;
 
         List<ProductSkuResponseDto> skus = skuEntities.stream().map(ProductSkuResponseDto::from).toList();
+        attachBindings(p.getId(), skus);
 
         BigDecimal priceFrom = skuEntities.stream()
                 .map(ProductSkuEntity::effectivePrice)
@@ -293,6 +313,299 @@ public class ProductServiceImpl implements ProductService {
         ProductResponseDto dto = ProductResponseDto.from(p, category != null ? category.getName() : null, priceFrom,
                 skus, productCollections);
         dto.setCategorySlug(category != null ? category.getSlug() : null);
+        dto.setMedia(productMedia.findByProductId(p.getId()).stream().map(ProductMediaResponseDto::from).toList());
         return dto;
+    }
+
+    // ===================== PUBLISH / SKU (admin) =====================
+
+    private static final java.util.Set<String> SKU_STATUSES = java.util.Set.of(
+            ProductSkuEntity.DRAFT, ProductSkuEntity.PUBLISHED, ProductSkuEntity.ARCHIVED);
+
+    /** products.base_price dùng cho lọc/sắp xếp giá ở SQL storefront -> giữ bằng giá thấp nhất của các SKU chưa ARCHIVED. */
+    private void recalcBasePrice(ProductEntity p, List<ProductSkuEntity> skuEntities) {
+        BigDecimal min = skuEntities.stream()
+                .filter(s -> !ProductSkuEntity.ARCHIVED.equals(s.getStatus()))
+                .map(ProductSkuEntity::effectivePrice)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(BigDecimal.ZERO);
+        if (p.getBasePrice() == null || p.getBasePrice().compareTo(min) != 0) {
+            p.setBasePrice(min);
+            p.touch();
+            products.update(p);
+        }
+    }
+
+    @Transactional
+    @Override
+    public ProductResponseDto publish(Long productId) {
+        ProductEntity p = requireProduct(productId);
+        List<ProductSkuEntity> skuList = productSkus.findByProductId(productId);
+        List<ProductSkuEntity> sellable = skuList.stream()
+                .filter(s -> !ProductSkuEntity.ARCHIVED.equals(s.getStatus()))
+                .toList();
+        if (sellable.isEmpty()) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Không thể publish: sản phẩm chưa có SKU nào (chưa ARCHIVED)");
+        }
+        for (ProductSkuEntity s : sellable) {
+            if (s.getListPrice() == null || s.getListPrice().signum() <= 0) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Không thể publish: SKU " + s.getSkuCode() + " chưa có giá niêm yết > 0", s.getSkuCode());
+            }
+        }
+        for (ProductSkuEntity s : sellable) {
+            if (!ProductSkuEntity.PUBLISHED.equals(s.getStatus())) {
+                s.setStatus(ProductSkuEntity.PUBLISHED);
+                s.touch();
+                productSkus.update(s);
+            }
+        }
+        if (sellable.stream().noneMatch(ProductSkuEntity::isDefault)) {
+            ProductSkuEntity first = sellable.get(0);
+            first.setDefault(true);
+            first.touch();
+            productSkus.update(first);
+        }
+        p.publish();
+        p.touch();
+        products.update(p);
+        recalcBasePrice(p, productSkus.findByProductId(productId));
+        return toAdminDto(p);
+    }
+
+    @Transactional
+    @Override
+    public ProductResponseDto unpublish(Long productId) {
+        ProductEntity p = requireProduct(productId);
+        p.setStatus(ProductEntity.DRAFT);
+        p.touch();
+        products.update(p);
+        return toAdminDto(p);
+    }
+
+    private static String normalizeSkuStatus(String status, String fallback) {
+        if (status == null || status.isBlank()) {
+            return fallback;
+        }
+        String s = status.trim().toUpperCase();
+        if (!SKU_STATUSES.contains(s)) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "status SKU không hợp lệ: " + status + " (DRAFT | PUBLISHED | ARCHIVED)", status);
+        }
+        return s;
+    }
+
+    /** Mỗi sản phẩm chỉ 1 SKU mặc định: bỏ cờ mặc định của các SKU khác. */
+    private void clearOtherDefaults(Long productId, Long keepSkuId) {
+        for (ProductSkuEntity other : productSkus.findByProductId(productId)) {
+            if (!other.getId().equals(keepSkuId) && other.isDefault()) {
+                other.setDefault(false);
+                other.touch();
+                productSkus.update(other);
+            }
+        }
+    }
+
+    @Transactional
+    @Override
+    public ProductSkuResponseDto addVariant(Long productId, AdminSkuRequestDto req) {
+        ProductEntity p = requireProduct(productId);
+        String code = req.getSkuCode().trim();
+        if (productSkus.findBySkuCode(code) != null) {
+            throw BusinessException.conflict(ErrorCode.DUPLICATE_SKU, "Mã SKU đã tồn tại: " + code, code);
+        }
+        ProductSkuEntity sku = new ProductSkuEntity(code, req.getSizeLabel(), req.getListPrice(), req.getOnHand());
+        sku.setProductId(productId);
+        applySkuFields(sku, req);
+        sku.setStatus(normalizeSkuStatus(req.getStatus(), ProductSkuEntity.DRAFT));
+        sku.setDefault(req.isDefault());
+        productSkus.create(sku);
+        if (sku.isDefault()) {
+            clearOtherDefaults(productId, sku.getId());
+        }
+        recalcBasePrice(p, productSkus.findByProductId(productId));
+        return skuDto(sku);
+    }
+
+    @Transactional
+    @Override
+    public ProductSkuResponseDto updateVariant(Long productId, Long skuId, AdminSkuRequestDto req) {
+        ProductEntity p = requireProduct(productId);
+        ProductSkuEntity sku = skuId == null ? null : productSkus.findOne(skuId);
+        if (sku == null || !productId.equals(sku.getProductId())) {
+            throw new ResourceNotFoundException("SKU", "ProductSku", skuId);
+        }
+        String code = req.getSkuCode().trim();
+        if (!code.equalsIgnoreCase(sku.getSkuCode())) {
+            ProductSkuEntity dup = productSkus.findBySkuCode(code);
+            if (dup != null && !dup.getId().equals(skuId)) {
+                throw BusinessException.conflict(ErrorCode.DUPLICATE_SKU, "Mã SKU đã tồn tại: " + code, code);
+            }
+            sku.setSkuCode(code);
+        }
+        sku.setSizeLabel(req.getSizeLabel());
+        sku.setListPrice(req.getListPrice());
+        applySkuFields(sku, req);
+        sku.setStatus(normalizeSkuStatus(req.getStatus(), sku.getStatus()));
+        // onHand KHÔNG đổi ở đây: tồn kho đi qua inventory (adjustments) để có lịch sử.
+        boolean wasDefault = sku.isDefault();
+        sku.setDefault(req.isDefault());
+        sku.touch();
+        productSkus.update(sku);
+        if (sku.isDefault() && !wasDefault) {
+            clearOtherDefaults(productId, skuId);
+        }
+        recalcBasePrice(p, productSkus.findByProductId(productId));
+        return skuDto(sku);
+    }
+
+    private static void applySkuFields(ProductSkuEntity sku, AdminSkuRequestDto v) {
+        sku.setName(v.getName());
+        sku.setMaterial(v.getMaterial());
+        sku.setGemstone(v.getGemstone());
+        sku.setMetalColorLabel(v.getMetalColorLabel());
+        sku.setCaratWeight(v.getCaratWeight());
+        sku.setWeightGram(v.getWeightGram());
+        sku.setSalePrice(v.getSalePrice());
+    }
+
+    // ===================== THUỘC TÍNH CỦA SKU =====================
+
+    private ProductSkuResponseDto skuDto(ProductSkuEntity sku) {
+        ProductSkuResponseDto dto = ProductSkuResponseDto.from(sku);
+        attachBindings(sku.getProductId(), List.of(dto));
+        return dto;
+    }
+
+    /** Nạp thuộc tính đã gán vào DTO các SKU của 1 sản phẩm (2 truy vấn cho cả sản phẩm). */
+    private void attachBindings(Long productId, List<ProductSkuResponseDto> dtos) {
+        if (dtos.isEmpty()) {
+            return;
+        }
+        List<SkuAttributeValueEntity> rows = skuAttributes.findByProductId(productId);
+        if (rows.isEmpty()) {
+            return;
+        }
+        Map<Long, ProductAttributeEntity> defs = new LinkedHashMap<>();
+        for (ProductAttributeEntity a : attributeDefs.findAll(org.springframework.data.domain.Sort.unsorted())) {
+            defs.put(a.getId(), a);
+        }
+        for (ProductSkuResponseDto dto : dtos) {
+            List<Map<String, Object>> list = new ArrayList<>();
+            for (SkuAttributeValueEntity row : rows) {
+                ProductAttributeEntity def = defs.get(row.getAttributeId());
+                if (dto.getId().equals(row.getSkuId()) && def != null) {
+                    list.add(bindingOf(def, row.getValue()));
+                }
+            }
+            dto.setAttributeBindings(list);
+        }
+    }
+
+    private static Map<String, Object> bindingOf(ProductAttributeEntity def, String stored) {
+        List<String> values = ProductAttributeEntity.MULTISELECT.equals(def.getType())
+                ? List.of(stored.split("\\|\\|")) : List.of(stored);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", String.valueOf(def.getId()));
+        m.put("code", def.getCode());
+        m.put("name", def.getName());
+        m.put("type", def.getType());
+        m.put("value", String.join(", ", values));
+        m.put("values", values);
+        return m;
+    }
+
+    private ProductSkuEntity requireSku(Long productId, Long skuId) {
+        requireProduct(productId);
+        ProductSkuEntity sku = skuId == null ? null : productSkus.findOne(skuId);
+        if (sku == null || !productId.equals(sku.getProductId())) {
+            throw new ResourceNotFoundException("SKU", "ProductSku", skuId);
+        }
+        return sku;
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Map<String, Object>> findVariantAttributes(Long productId, Long skuId) {
+        return skuDto(requireSku(productId, skuId)).getAttributeBindings();
+    }
+
+    @Transactional
+    @Override
+    public ProductSkuResponseDto setVariantAttributes(Long productId, Long skuId, AdminSkuAttributesRequestDto req) {
+        ProductSkuEntity sku = requireSku(productId, skuId);
+        // Kiểm tra TOÀN BỘ trước khi ghi để lỗi không để lại trạng thái nửa vời.
+        Map<Long, String> toStore = new LinkedHashMap<>();
+        for (AdminSkuAttributesRequestDto.Item item : req.getValues()) {
+            ProductAttributeEntity def = resolveAttribute(item);
+            if (toStore.containsKey(def.getId())) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Thuộc tính bị lặp trong request: " + def.getCode(), def.getCode());
+            }
+            toStore.put(def.getId(), normalizeAttributeValue(def, item));
+        }
+        skuAttributes.deleteBySkuId(skuId);
+        for (Map.Entry<Long, String> e : toStore.entrySet()) {
+            skuAttributes.create(new SkuAttributeValueEntity(skuId, e.getKey(), e.getValue()));
+        }
+        return skuDto(sku);
+    }
+
+    private ProductAttributeEntity resolveAttribute(AdminSkuAttributesRequestDto.Item item) {
+        ProductAttributeEntity def = null;
+        if (item.getAttributeId() != null) {
+            def = attributeDefs.findOne(item.getAttributeId());
+        } else if (item.getAttributeCode() != null && !item.getAttributeCode().isBlank()) {
+            def = attributeDefs.findByCode(item.getAttributeCode().trim());
+        } else {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "Cần attributeId hoặc attributeCode");
+        }
+        if (def == null) {
+            throw new ResourceNotFoundException("Thuộc tính", "Attribute",
+                    item.getAttributeId() != null ? item.getAttributeId() : item.getAttributeCode());
+        }
+        return def;
+    }
+
+    /** Trả chuỗi lưu DB: TEXT/SELECT = giá trị; MULTISELECT = các giá trị nối "||". */
+    private static String normalizeAttributeValue(ProductAttributeEntity def, AdminSkuAttributesRequestDto.Item item) {
+        List<String> options = def.getOptionsList();
+        if (ProductAttributeEntity.MULTISELECT.equals(def.getType())) {
+            List<String> raw = item.getValues() != null ? item.getValues()
+                    : (item.getValue() == null ? List.of() : List.of(item.getValue().split("\\|\\|")));
+            Set<String> distinct = new LinkedHashSet<>();
+            for (String v : raw) {
+                if (v != null && !v.isBlank()) {
+                    distinct.add(v.trim());
+                }
+            }
+            if (distinct.isEmpty()) {
+                throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                        "Thuộc tính " + def.getCode() + " cần ít nhất 1 giá trị", def.getCode());
+            }
+            for (String v : distinct) {
+                requireOption(def, options, v);
+            }
+            return String.join("||", distinct);
+        }
+        String v = item.getValue() == null ? "" : item.getValue().trim();
+        if (v.isEmpty() || v.length() > 1000) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Giá trị thuộc tính " + def.getCode() + " không được trống và tối đa 1000 ký tự", def.getCode());
+        }
+        if (ProductAttributeEntity.SELECT.equals(def.getType())) {
+            requireOption(def, options, v);
+        }
+        return v;
+    }
+
+    private static void requireOption(ProductAttributeEntity def, List<String> options, String value) {
+        if (!options.contains(value)) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Giá trị '" + value + "' không thuộc options của thuộc tính " + def.getCode() + " " + options,
+                    def.getCode());
+        }
     }
 }

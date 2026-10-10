@@ -27,6 +27,13 @@ public class AdminCmsPageRequestDto {
     private String slug;
 
     private String status;
+    /** Mã ngôn ngữ (mặc định vi). */
+    private String locale;
+    /** Bật/tắt trang (bỏ trống: giữ nguyên / mặc định bật). */
+    @JsonAlias("isActive")
+    private Boolean active;
+    /** SEO: {title, description, keywords, canonicalUrl, imageUrl}. */
+    private java.util.Map<String, Object> seo;
 
     @Valid
     private List<AdminCmsBlockRequestDto> blocks;

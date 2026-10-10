@@ -8,8 +8,10 @@ import com.pk.core.business.web.AbstractRest;
 import com.pk.core.common.web.BaseRes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.pk.core.business.service.BannerPlacementService;
 import com.pk.core.business.service.BannerService;
 import com.pk.core.model.constant.admin.UrlAdminConstant;
+import com.pk.core.model.dto.request.AdminBannerPlacementRequestDto;
 import com.pk.core.model.dto.request.AdminBannerRequestDto;
 import com.pk.core.model.dto.response.MessageResponseDto;
 import org.springframework.validation.annotation.Validated;
@@ -33,6 +35,7 @@ import jakarta.validation.Valid;
 public class AdminBannerRest extends AbstractRest {
 
     private final BannerService bannerService;
+    private final BannerPlacementService placementService;
 
     @GetMapping(UrlAdminConstant.Banner.BANNERS)
     public BaseRes list(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int take,
@@ -83,6 +86,37 @@ public class AdminBannerRest extends AbstractRest {
         try {
             bannerService.delete(id);
             return restSuccessHandle.handleSuccess(MessageResponseDto.ok("Đã xoá banner"));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    // ---------- Vị trí banner (placements) ----------
+
+    @GetMapping(UrlAdminConstant.Banner.PLACEMENTS)
+    public BaseRes listPlacements(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(placementService.findAll());
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PostMapping(UrlAdminConstant.Banner.PLACEMENTS)
+    public BaseRes createPlacement(@Valid @RequestBody AdminBannerPlacementRequestDto request,
+                                   HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(placementService.create(request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PatchMapping(UrlAdminConstant.Banner.PLACEMENTS + "/{id}")
+    public BaseRes updatePlacement(@PathVariable Long id, @Valid @RequestBody AdminBannerPlacementRequestDto request,
+                                   HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(placementService.update(id, request));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

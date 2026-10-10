@@ -2,6 +2,8 @@ package com.pk.core.business.service.impl;
 
 import lombok.RequiredArgsConstructor;
 
+import com.pk.core.business.repository.CartItemRepo;
+import com.pk.core.business.repository.CartRepo;
 import com.pk.core.business.repository.CustomerAddressRepo;
 import com.pk.core.business.repository.OrderItemRepo;
 import com.pk.core.business.repository.OrderRepo;
@@ -18,11 +20,13 @@ import com.pk.core.common.exception.ErrorCode;
 import com.pk.core.common.exception.ResourceNotFoundException;
 import com.pk.core.common.web.PageResponse;
 import com.pk.core.model.dto.request.AdminOrderStatusRequestDto;
+import com.pk.core.model.dto.request.GuestOrderRequestDto;
 import com.pk.core.model.dto.request.CreateOrderRequestDto;
 import com.pk.core.model.dto.request.OrderItemRequestDto;
 import com.pk.core.model.dto.response.OrderItemResponseDto;
 import com.pk.core.model.dto.response.OrderResponseDto;
 import com.pk.core.model.dto.response.OrderTimelineResponseDto;
+import com.pk.core.model.entity.CartEntity;
 import com.pk.core.model.entity.CustomerAddressEntity;
 import com.pk.core.model.entity.OrderEntity;
 import com.pk.core.model.entity.OrderItemEntity;
@@ -58,6 +62,8 @@ public class OrderServiceImpl implements OrderService {
     private final VoucherService voucherService;
     private final PromotionPricingService promotionPricing;
     private final PreOrderService preOrder;
+    private final CartRepo carts;
+    private final CartItemRepo cartItems;
 
     @Transactional
     @Override
@@ -66,10 +72,47 @@ public class OrderServiceImpl implements OrderService {
         if (address == null) {
             throw new ResourceNotFoundException("Địa chỉ giao hàng", "Address", req.getAddressId());
         }
+        return placeOrder(userId, null, null, address, req.getPaymentMethod(), req.getShippingMethod(),
+                req.getVoucherCode(), req.getNote(), req.getItems());
+    }
 
+    @Transactional
+    @Override
+    public OrderResponseDto createGuest(GuestOrderRequestDto req, String guestCartId) {
+        CustomerAddressEntity shipTo = new CustomerAddressEntity();
+        shipTo.setRecipientName(req.getRecipientName().trim());
+        shipTo.setPhone(req.getPhone().trim());
+        shipTo.setProvince(req.getProvince().trim());
+        shipTo.setDistrict(req.getDistrict().trim());
+        shipTo.setWard(req.getWard().trim());
+        shipTo.setAddressLine(req.getAddressLine().trim());
+        String email = req.getEmail() == null || req.getEmail().isBlank() ? null : req.getEmail().trim();
+        return placeOrder(null, email, guestCartId, shipTo, req.getPaymentMethod(), req.getShippingMethod(),
+                req.getVoucherCode(), req.getNote(), req.getItems());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public OrderResponseDto findGuestOrder(String code, String phone) {
+        OrderEntity order = code == null || code.isBlank() ? null : orders.findByCode(code.trim());
+        if (order == null || order.getUserId() != null || phone == null
+                || !digits(phone).equals(digits(order.getShipPhone()))) {
+            throw new ResourceNotFoundException("Đơn hàng", "Order", code);
+        }
+        return toDto(order);
+    }
+
+    private static String digits(String value) {
+        return value == null ? "" : value.replaceAll("[^0-9]", "");
+    }
+
+    /** Lõi đặt hàng dùng chung cho khách đăng nhập (userId != null) và khách vãng lai (userId = null). */
+    private OrderResponseDto placeOrder(Long userId, String guestEmail, String guestCartId, CustomerAddressEntity address,
+                                        String paymentMethod, String shippingMethod, String voucherCode, String noteText,
+                                        List<OrderItemRequestDto> requestItems) {
         // Gộp trùng skuId (client lỡ gửi 2 dòng cùng 1 SKU) để chỉ giữ chỗ tồn kho + tạo 1 dòng duy nhất.
         Map<Long, Integer> qtyBySku = new LinkedHashMap<>();
-        for (OrderItemRequestDto line : req.getItems()) {
+        for (OrderItemRequestDto line : requestItems) {
             qtyBySku.merge(line.getSkuId(), line.getQuantity(), Integer::sum);
         }
 
@@ -117,17 +160,18 @@ public class OrderServiceImpl implements OrderService {
         VoucherEntity voucher = null;
         BigDecimal voucherDiscount = BigDecimal.ZERO;
         String appliedVoucherCode = null;
-        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
+        if (voucherCode != null && !voucherCode.isBlank()) {
             BigDecimal payable = subtotal.subtract(productDiscount);
-            voucher = voucherService.validate(req.getVoucherCode(), payable);
+            voucher = voucherService.validate(voucherCode, payable);
             voucherDiscount = voucher.computeDiscount(payable);
             appliedVoucherCode = voucher.getCode();
         }
 
         // Khuyến mãi sản phẩm đã áp (PromotionPricingService); CHƯA tính phí ship (chưa có bảng phí theo
         // phương thức/khu vực) nên để 0.
-        OrderEntity order = new OrderEntity(userId, req.getPaymentMethod(), req.getShippingMethod(), address,
-                subtotal, productDiscount, voucherDiscount, BigDecimal.ZERO, appliedVoucherCode, req.getNote());
+        OrderEntity order = new OrderEntity(userId, paymentMethod, shippingMethod, address,
+                subtotal, productDiscount, voucherDiscount, BigDecimal.ZERO, appliedVoucherCode, noteText);
+        order.setGuestEmail(guestEmail);
         orders.create(order);
 
         for (OrderItemEntity item : itemEntities) {
@@ -137,6 +181,15 @@ public class OrderServiceImpl implements OrderService {
 
         orderTimelines.create(new OrderTimelineEntity(order.getId(), OrderEntity.PENDING,
                 hasPreOrderLine ? "Đơn hàng được tạo (có sản phẩm đặt trước)" : "Đơn hàng được tạo", "CUSTOMER"));
+
+        // Dọn khỏi giỏ của khách CHỈ những dòng vừa đặt thành công; dòng chưa mua giữ nguyên.
+        CartEntity userCart = userId != null ? carts.findByUserId(userId)
+                : (guestCartId == null || guestCartId.isBlank() ? null : carts.findByGuestId(guestCartId.trim()));
+        if (userCart != null) {
+            for (OrderItemEntity item : itemEntities) {
+                cartItems.deleteByCartIdAndSkuId(userCart.getId(), item.getSkuId());
+            }
+        }
 
         if (voucher != null) {
             voucherService.applyUsage(voucher.getId(), voucher.getCode());
@@ -187,13 +240,12 @@ public class OrderServiceImpl implements OrderService {
                     order.getStatus(), OrderEntity.CANCELLED);
         }
 
+        guardTransition(order, OrderEntity.CANCELLED);
         order.cancel();
         order.touch();
         orders.update(order);
 
-        for (OrderItemEntity item : orderItems.findByOrderId(order.getId())) {
-            productSkus.releaseStock(item.getSkuId(), item.getQuantity());
-        }
+        releaseOrderResources(order);
 
         orderTimelines.create(new OrderTimelineEntity(order.getId(), OrderEntity.CANCELLED, reason, "CUSTOMER"));
 
@@ -268,7 +320,15 @@ public class OrderServiceImpl implements OrderService {
                     oldStatus, newStatus);
         }
 
+        guardTransition(order, newStatus);
         order.setStatus(newStatus);
+        // COD: shipper thu tiền khi giao -> ghi nhận đã thanh toán lúc đơn sang DELIVERED.
+        boolean codCollected = OrderEntity.DELIVERED.equals(newStatus)
+                && "COD".equalsIgnoreCase(order.getPaymentMethod())
+                && OrderEntity.UNPAID.equals(order.getPaymentStatus());
+        if (codCollected) {
+            order.setPaymentStatus(OrderEntity.PAID);
+        }
         if (request.getTrackingCode() != null && !request.getTrackingCode().isBlank()) {
             order.setTrackingCode(request.getTrackingCode());
         }
@@ -278,13 +338,14 @@ public class OrderServiceImpl implements OrderService {
         // Chuyển sang CANCELLED qua updateStatus cũng phải nhả tồn như cancel()/cancelByAdmin().
         // CANCELLED không có trạng thái đi tiếp nên không thể nhả hai lần.
         if (OrderEntity.CANCELLED.equals(newStatus) && !OrderEntity.CANCELLED.equals(oldStatus)) {
-            for (OrderItemEntity item : orderItems.findByOrderId(order.getId())) {
-                productSkus.releaseStock(item.getSkuId(), item.getQuantity());
-            }
+            releaseOrderResources(order);
         }
 
         String note = request.getNote() != null && !request.getNote().isBlank()
                 ? request.getNote() : "Admin cập nhật trạng thái từ " + oldStatus + " sang " + newStatus;
+        if (codCollected) {
+            note = note + " (đã thu tiền COD)";
+        }
         orderTimelines.create(new OrderTimelineEntity(order.getId(), newStatus, note, "ADMIN"));
 
         return toDto(order);
@@ -308,13 +369,12 @@ public class OrderServiceImpl implements OrderService {
                     order.getStatus(), OrderEntity.CANCELLED);
         }
 
+        guardTransition(order, OrderEntity.CANCELLED);
         order.cancel();
         order.touch();
         orders.update(order);
 
-        for (OrderItemEntity item : orderItems.findByOrderId(order.getId())) {
-            productSkus.releaseStock(item.getSkuId(), item.getQuantity());
-        }
+        releaseOrderResources(order);
 
         orderTimelines.create(new OrderTimelineEntity(order.getId(), OrderEntity.CANCELLED, reason, "ADMIN"));
 
@@ -372,6 +432,10 @@ public class OrderServiceImpl implements OrderService {
                     order.getPaymentStatus(), OrderEntity.REFUNDED);
         }
 
+        if (amount != null && amount.compareTo(order.getGrandTotal()) > 0) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "Số tiền hoàn (" + amount + ") vượt tổng giá trị đơn (" + order.getGrandTotal() + ")");
+        }
         order.setPaymentStatus(OrderEntity.REFUNDED);
         order.touch();
         orders.update(order);
@@ -380,5 +444,24 @@ public class OrderServiceImpl implements OrderService {
                 "Hoàn tiền " + amount + " - Lý do: " + reason, "ADMIN"));
 
         return toDto(order);
+    }
+
+    /** Nhả tồn đã giữ chỗ và trả lượt dùng voucher (nếu đơn có áp voucher) khi đơn bị huỷ. */
+    private void releaseOrderResources(OrderEntity order) {
+        for (OrderItemEntity item : orderItems.findByOrderId(order.getId())) {
+            productSkus.releaseStock(item.getSkuId(), item.getQuantity());
+        }
+        if (order.getAppliedVoucherCode() != null && !order.getAppliedVoucherCode().isBlank()) {
+            voucherService.releaseUsage(order.getAppliedVoucherCode());
+        }
+    }
+
+    /** Chuyển trạng thái nguyên tử: nếu request khác đã đổi trạng thái đơn trước thì dừng (không nhả tồn hai lần). */
+    private void guardTransition(OrderEntity order, String toStatus) {
+        if (orders.updateStatusIfCurrent(order.getId(), order.getStatus(), toStatus) == 0) {
+            throw BusinessException.conflict(ErrorCode.INVALID_STATUS_TRANSITION,
+                    "Đơn hàng " + order.getCode() + " vừa được cập nhật bởi thao tác khác, vui lòng tải lại",
+                    order.getStatus(), toStatus);
+        }
     }
 }

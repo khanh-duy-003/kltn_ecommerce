@@ -2,6 +2,7 @@ package com.pk.core.business.repository;
 
 import com.pk.core.model.entity.OrderEntity;
 import org.springframework.data.repository.query.Param;
+import vn.com.unit.springframework.data.mirage.repository.query.Modifying;
 
 import java.util.List;
 
@@ -22,4 +23,10 @@ public interface OrderRepo extends PkRepo<OrderEntity, Long> {
      * OrderServiceImpl.searchForAdmin()). */
     List<OrderEntity> searchAdmin(@Param("status") String status, @Param("paymentStatus") String paymentStatus,
                                    @Param("keyword") String keyword);
+
+    /** Đổi trạng thái NGUYÊN TỬ chỉ khi đơn vẫn đang ở `fromStatus`. Trả 0 nếu request khác đã đổi trước
+     * (vd 2 lần huỷ đồng thời) - nơi gọi phải dừng, tránh nhả tồn/voucher hai lần. */
+    @Modifying
+    int updateStatusIfCurrent(@Param("id") Long id, @Param("fromStatus") String fromStatus,
+                              @Param("toStatus") String toStatus);
 }

@@ -7,12 +7,18 @@ import lombok.RequiredArgsConstructor;
 import com.pk.core.business.service.CategoryService;
 import com.pk.core.business.service.CollectionService;
 import com.pk.core.business.service.ProductAttributeService;
+import com.pk.core.business.service.FileStorageService;
+import com.pk.core.business.service.ProductMediaService;
 import com.pk.core.business.service.ProductService;
 import com.pk.core.business.web.AbstractRest;
 import com.pk.core.common.web.BaseRes;
 import com.pk.core.model.constant.admin.UrlAdminConstant;
 import com.pk.core.model.dto.request.AdminAttributeRequestDto;
+import com.pk.core.model.dto.request.AdminProductMediaRequestDto;
+import com.pk.core.model.dto.request.AdminSkuAttributesRequestDto;
 import com.pk.core.model.dto.request.AdminCategoryRequestDto;
+import com.pk.core.model.dto.request.AdminCollectionProductsRequestDto;
+import com.pk.core.model.dto.request.AdminSkuRequestDto;
 import com.pk.core.model.dto.request.AdminCollectionRequestDto;
 import com.pk.core.model.dto.request.AdminCreateProductRequestDto;
 import com.pk.core.model.dto.request.AdminUpdateProductRequestDto;
@@ -51,6 +57,8 @@ public class AdminCatalogRest extends AbstractRest {
     private final CategoryService categoryService;
     private final CollectionService collectionService;
     private final ProductAttributeService attributeService;
+    private final ProductMediaService mediaService;
+    private final FileStorageService fileStorage;
 
     // ---------- Products ----------
 
@@ -115,6 +123,119 @@ public class AdminCatalogRest extends AbstractRest {
                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(productService.archive(productId));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PatchMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/publish")
+    public BaseRes publishProduct(@PathVariable Long productId,
+                                  HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.publish(productId));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PatchMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/unpublish")
+    public BaseRes unpublishProduct(@PathVariable Long productId,
+                                    HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.unpublish(productId));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PostMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/variants")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BaseRes addVariant(@PathVariable Long productId,
+                              @Valid @RequestBody AdminSkuRequestDto request,
+                              HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.addVariant(productId, request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PutMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/variants/{skuId}")
+    public BaseRes updateVariant(@PathVariable Long productId, @PathVariable Long skuId,
+                                 @Valid @RequestBody AdminSkuRequestDto request,
+                                 HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.updateVariant(productId, skuId, request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PostMapping(value = UrlAdminConstant.Catalog.UPLOAD, consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public BaseRes upload(@org.springframework.web.bind.annotation.RequestPart("file") org.springframework.web.multipart.MultipartFile file,
+                          HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(fileStorage.store(file));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @GetMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/media")
+    public BaseRes listMedia(@PathVariable Long productId,
+                             HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(mediaService.findByProduct(productId));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PostMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/media")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BaseRes addMedia(@PathVariable Long productId, @Valid @RequestBody AdminProductMediaRequestDto request,
+                            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(mediaService.add(productId, request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PutMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/media/{mediaId}")
+    public BaseRes updateMedia(@PathVariable Long productId, @PathVariable Long mediaId,
+                               @Valid @RequestBody AdminProductMediaRequestDto request,
+                               HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(mediaService.update(productId, mediaId, request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @DeleteMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/media/{mediaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMedia(@PathVariable Long productId, @PathVariable Long mediaId) {
+        mediaService.delete(productId, mediaId);
+    }
+
+    @GetMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/variants/{skuId}/attributes")
+    public BaseRes variantAttributes(@PathVariable Long productId, @PathVariable Long skuId,
+                                     HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.findVariantAttributes(productId, skuId));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PutMapping(UrlAdminConstant.Catalog.PRODUCTS + "/{productId}/variants/{skuId}/attributes")
+    public BaseRes setVariantAttributes(@PathVariable Long productId, @PathVariable Long skuId,
+                                        @Valid @RequestBody AdminSkuAttributesRequestDto request,
+                                        HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(productService.setVariantAttributes(productId, skuId, request));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
@@ -203,6 +324,27 @@ public class AdminCatalogRest extends AbstractRest {
                                      HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(collectionService.update(collectionId, request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @PostMapping(UrlAdminConstant.Catalog.COLLECTIONS + "/{collectionId}/products")
+    public BaseRes addCollectionProducts(@PathVariable Long collectionId,
+                                         @Valid @RequestBody AdminCollectionProductsRequestDto request,
+                                         HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(collectionService.addProducts(collectionId, request.getProductIds()));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @DeleteMapping(UrlAdminConstant.Catalog.COLLECTIONS + "/{collectionId}/products/{productId}")
+    public BaseRes removeCollectionProduct(@PathVariable Long collectionId, @PathVariable Long productId,
+                                           HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(collectionService.removeProduct(collectionId, productId));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

@@ -51,6 +51,10 @@ public class CmsBlockEntity extends UpdateEntity {
     @Column(name = "target_segment")
     private String targetSegment;
 
+    /** Block tắt (false) vẫn lưu nhưng không trả ở storefront. */
+    @Column(name = "is_visible")
+    private boolean visible = true;
+
     public CmsBlockEntity(Long pageId, String type, int sortOrder, String data, String targetSegment) {
         this.pageId = pageId;
         this.type = type;

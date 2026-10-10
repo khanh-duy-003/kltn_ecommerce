@@ -10,6 +10,7 @@ import com.pk.core.identity.security.model.SecurityUser;
 import com.pk.core.model.constant.UrlConstant;
 import com.pk.core.model.dto.request.CancelOrderRequestDto;
 import com.pk.core.model.dto.request.CreateOrderRequestDto;
+import com.pk.core.model.dto.request.GuestOrderRequestDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +41,31 @@ public class OrderRest extends AbstractRest {
                            HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
             return restSuccessHandle.handleSuccess(orderService.create(principal.getId(), request));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    /** Đặt hàng không cần đăng nhập: địa chỉ gửi kèm trong body; header X-Guest-Cart-Id / x-guest-id (nếu có) để dọn giỏ khách. */
+    @PostMapping(UrlConstant.Order.GUEST)
+    @ResponseStatus(HttpStatus.CREATED)
+    public BaseRes createGuest(@Valid @RequestBody GuestOrderRequestDto request,
+                               @RequestHeader(value = "X-Guest-Cart-Id", required = false) String guestId,
+                               @RequestHeader(value = "x-guest-id", required = false) String guestIdAlias,
+                               HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(
+                    orderService.createGuest(request, guestId != null && !guestId.isBlank() ? guestId : guestIdAlias));
+        } catch (Exception ex) {
+            return restErrorHandle.handleException(ex, httpRequest, httpResponse);
+        }
+    }
+
+    @GetMapping(UrlConstant.Order.GUEST + "/{orderCode}")
+    public BaseRes guestDetail(@PathVariable String orderCode, @RequestParam String phone,
+                               HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+        try {
+            return restSuccessHandle.handleSuccess(orderService.findGuestOrder(orderCode, phone));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }

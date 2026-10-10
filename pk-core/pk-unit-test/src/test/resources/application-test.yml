@@ -19,5 +19,7 @@ app:
     issuer: pk-core-test
   seed:
     enabled: false
+  upload:
+    dir: ${java.io.tmpdir}/pk-uploads-test
   otp:
     fixed-code: "123456"   # test không đọc được log nên dùng mã OTP cố định

@@ -21,6 +21,8 @@ CREATE SEQUENCE promotions_id_seq START WITH 1;
 CREATE SEQUENCE phone_otps_id_seq START WITH 1;
 CREATE SEQUENCE carts_id_seq START WITH 1;
 CREATE SEQUENCE cart_items_id_seq START WITH 1;
+CREATE SEQUENCE sku_attribute_values_id_seq START WITH 1;
+CREATE SEQUENCE product_media_id_seq START WITH 1;
 CREATE SEQUENCE wishlist_items_id_seq START WITH 1;
 CREATE SEQUENCE banner_placements_id_seq START WITH 1;
 CREATE SEQUENCE banners_id_seq START WITH 1;
@@ -200,7 +202,8 @@ CREATE TABLE product_skus (
 CREATE TABLE orders (
     id                  BIGINT PRIMARY KEY,
     code                VARCHAR(30) NOT NULL,
-    user_id             BIGINT NOT NULL REFERENCES users (id),
+    user_id             BIGINT REFERENCES users (id),
+    guest_email         VARCHAR(150),
     status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     payment_status      VARCHAR(20) NOT NULL DEFAULT 'UNPAID',
     payment_method      VARCHAR(30) NOT NULL,
@@ -351,6 +354,9 @@ CREATE TABLE cms_pages (
     slug         VARCHAR(140) NOT NULL,
     title        VARCHAR(200) NOT NULL,
     status       VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    locale        VARCHAR(10) NOT NULL DEFAULT 'vi',
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    seo           TEXT,
     created_id   BIGINT,
     created_date TIMESTAMP NOT NULL,
     updated_id   BIGINT,
@@ -368,6 +374,7 @@ CREATE TABLE cms_blocks (
     sort_order     INTEGER NOT NULL DEFAULT 0,
     data           TEXT,
     target_segment VARCHAR(60),
+    is_visible      BOOLEAN NOT NULL DEFAULT TRUE,
     created_id     BIGINT,
     created_date   TIMESTAMP NOT NULL,
     updated_id     BIGINT,
@@ -455,6 +462,34 @@ CREATE TABLE carts (
     updated_date  TIMESTAMP,
     CONSTRAINT uq_carts_user UNIQUE (user_id),
     CONSTRAINT uq_carts_guest UNIQUE (guest_id)
+);
+
+CREATE TABLE product_media (
+    id            BIGINT PRIMARY KEY,
+    product_id    BIGINT NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    sku_id        BIGINT REFERENCES product_skus (id) ON DELETE CASCADE,
+    url           VARCHAR(500) NOT NULL,
+    alt           VARCHAR(200),
+    media_type    VARCHAR(10) NOT NULL DEFAULT 'IMAGE',
+    sort_order    INTEGER NOT NULL DEFAULT 0,
+    is_primary    BOOLEAN NOT NULL DEFAULT FALSE,
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    updated_id    BIGINT,
+    updated_date  TIMESTAMP,
+    CONSTRAINT ck_product_media_type CHECK (media_type IN ('IMAGE', 'VIDEO'))
+);
+
+CREATE TABLE sku_attribute_values (
+    id            BIGINT PRIMARY KEY,
+    sku_id        BIGINT NOT NULL REFERENCES product_skus (id) ON DELETE CASCADE,
+    attribute_id  BIGINT NOT NULL REFERENCES product_attributes (id) ON DELETE CASCADE,
+    value         VARCHAR(1000) NOT NULL,
+    created_id    BIGINT,
+    created_date  TIMESTAMP NOT NULL,
+    updated_id    BIGINT,
+    updated_date  TIMESTAMP,
+    CONSTRAINT uq_sku_attribute_values UNIQUE (sku_id, attribute_id)
 );
 
 CREATE TABLE cart_items (

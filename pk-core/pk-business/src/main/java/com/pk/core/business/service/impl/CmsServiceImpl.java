@@ -47,6 +47,8 @@ public class CmsServiceImpl implements CmsService {
     };
     private static final Set<String> BANNER_LAYOUTS = Set.of("SLIDER", "GRID", "DOUBLE");
     private static final Set<String> PAGE_STATUSES = Set.of(CmsPageEntity.DRAFT, CmsPageEntity.PUBLISHED);
+    private static final List<String> CAROUSEL_FILTER_TYPES = List.of("MANUAL_PRODUCTS", "CATEGORY", "COLLECTION",
+            "CAMPAIGN", "NEW_ARRIVALS", "BEST_SELLERS", "MOST_FAVORITED");
     private static final int DEFAULT_CAROUSEL_LIMIT = 12;
     private static final int MAX_CAROUSEL_LIMIT = 50;
 
@@ -66,7 +68,7 @@ public class CmsServiceImpl implements CmsService {
         // findAll() KHÔNG tự lọc soft-delete (Mirage/PkRepo không biết deleted_date) - lọc tay bằng Java.
         return pages.findAll(Sort.unsorted()).stream()
                 .filter(p -> p.getDeletedDate() == null)
-                .map(p -> CmsPageResponseDto.from(p, toBlockDtos(p.getId())))
+                .map(p -> pageDto(p, toBlockDtos(p.getId())))
                 .toList();
     }
 
@@ -74,7 +76,7 @@ public class CmsServiceImpl implements CmsService {
     @Override
     public CmsPageResponseDto findPageById(Long pageId) {
         CmsPageEntity page = findPageOrThrow(pageId);
-        return CmsPageResponseDto.from(page, toBlockDtos(page.getId()));
+        return pageDto(page, toBlockDtos(page.getId()));
     }
 
     @Transactional
@@ -87,12 +89,13 @@ public class CmsServiceImpl implements CmsService {
         // Kiểm tra block TRƯỚC khi ghi để lỗi cấu trúc không để lại trang dở dang.
         List<CmsBlockEntity> newBlocks = buildBlocks(null, req.getBlocks());
         CmsPageEntity page = new CmsPageEntity(slug, req.getName().trim(), normalizeStatus(req.getStatus()));
+        applyPageExtras(page, req);
         pages.create(page);
         for (CmsBlockEntity b : newBlocks) {
             b.setPageId(page.getId());
             blocks.create(b);
         }
-        return CmsPageResponseDto.from(page, toBlockDtos(page.getId()));
+        return pageDto(page, toBlockDtos(page.getId()));
     }
 
     @Transactional
@@ -111,6 +114,7 @@ public class CmsServiceImpl implements CmsService {
         if (req.getStatus() != null && !req.getStatus().isBlank()) {
             page.setStatus(normalizeStatus(req.getStatus()));
         }
+        applyPageExtras(page, req);
         page.touch();
         pages.update(page);
 
@@ -123,7 +127,7 @@ public class CmsServiceImpl implements CmsService {
                 blocks.create(b);
             }
         }
-        return CmsPageResponseDto.from(page, toBlockDtos(pageId));
+        return pageDto(page, toBlockDtos(pageId));
     }
 
     @Transactional
@@ -145,6 +149,9 @@ public class CmsServiceImpl implements CmsService {
         block.setSortOrder(fresh.getSortOrder());
         block.setData(fresh.getData());
         block.setTargetSegment(fresh.getTargetSegment());
+        if (req.getVisible() != null) {
+            block.setVisible(req.getVisible());
+        }
         block.touch();
         blocks.update(block);
         return toBlockDto(block);
@@ -164,17 +171,21 @@ public class CmsServiceImpl implements CmsService {
     @Override
     public CmsStorefrontPageResponseDto findPublishedBySlug(String slug) {
         CmsPageEntity page = (slug == null || slug.isBlank()) ? null : pages.findBySlug(slug.trim().toLowerCase());
-        if (page == null || page.getDeletedDate() != null || !CmsPageEntity.PUBLISHED.equals(page.getStatus())) {
+        if (page == null || page.getDeletedDate() != null || !page.isActive()
+                || !CmsPageEntity.PUBLISHED.equals(page.getStatus())) {
             throw new ResourceNotFoundException("Trang CMS", "CmsPage", slug);
         }
         List<CmsStorefrontBlockResponseDto> out = new ArrayList<>();
         for (CmsBlockEntity b : blocks.findByPageId(page.getId())) {
+            if (!b.isVisible()) {
+                continue;
+            }
             Map<String, Object> config = readMap(b.getData());
             out.add(new CmsStorefrontBlockResponseDto(String.valueOf(b.getId()), b.getType(), b.getSortOrder(), config,
                     resolveContent(b.getType(), config)));
         }
         return new CmsStorefrontPageResponseDto(String.valueOf(page.getId()), page.getTitle(), page.getSlug(),
-                page.getStatus(), out);
+                page.getStatus(), out, page.getLocale(), readSeo(page));
     }
 
     /** Nạp sẵn dữ liệu cho các loại block có nội dung động; loại khác trả null (client tự dùng `config`). */
@@ -290,7 +301,7 @@ public class CmsServiceImpl implements CmsService {
         Object ids = carouselValue(config, "productIds");
         if (filterType == null || "MANUAL_PRODUCTS".equals(filterType)) {
             // Legacy (không có filterType): productIds hoặc collectionSlug.
-            if (ids instanceof List<?> items) {
+            if (ids instanceof List<?> items && !items.isEmpty()) {
                 for (Object item : items) {
                     ProductResponseDto p = findProduct(item);
                     if (p != null) {
@@ -370,6 +381,10 @@ public class CmsServiceImpl implements CmsService {
                 throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
                         "Block PRODUCT_CAROUSEL cần config.dataSource.filterType, hoặc config.productIds / config.collectionSlug");
             }
+        } else if (!CAROUSEL_FILTER_TYPES.contains(filterType)) {
+            throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
+                    "dataSource.filterType không hợp lệ: " + filterType + " ("
+                            + String.join(" | ", CAROUSEL_FILTER_TYPES) + ")", filterType);
         } else if ("MANUAL_PRODUCTS".equals(filterType) && !hasIds) {
             throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
                     "Block PRODUCT_CAROUSEL (MANUAL_PRODUCTS) cần dataSource.productIds có ít nhất 1 sản phẩm");
@@ -407,7 +422,9 @@ public class CmsServiceImpl implements CmsService {
         validateConfig(type, req.getConfig());
         String segment = req.getTargetSegment() == null || req.getTargetSegment().isBlank()
                 ? null : req.getTargetSegment().trim();
-        return new CmsBlockEntity(pageId, type, req.getSortOrder(), toJson(req.getConfig()), segment);
+        CmsBlockEntity block = new CmsBlockEntity(pageId, type, req.getSortOrder(), toJson(req.getConfig()), segment);
+        block.setVisible(req.getVisible() == null || req.getVisible());
+        return block;
     }
 
     private static void validateConfig(String type, Map<String, Object> config) {
@@ -450,13 +467,35 @@ public class CmsServiceImpl implements CmsService {
         return s.isEmpty() ? null : s;
     }
 
+    private CmsPageResponseDto pageDto(CmsPageEntity page, List<CmsBlockResponseDto> blockDtos) {
+        return CmsPageResponseDto.from(page, blockDtos, readSeo(page));
+    }
+
+    /** SEO lưu dạng JSON text; chưa có thì null (storefront tự dùng tiêu đề trang làm title mặc định). */
+    private Map<String, Object> readSeo(CmsPageEntity page) {
+        return page.getSeo() == null || page.getSeo().isBlank() ? null : readMap(page.getSeo());
+    }
+
+    /** Áp locale / isActive / seo từ request (trường bỏ trống thì giữ nguyên giá trị hiện có). */
+    private void applyPageExtras(CmsPageEntity page, AdminCmsPageRequestDto req) {
+        if (req.getLocale() != null && !req.getLocale().isBlank()) {
+            page.setLocale(req.getLocale().trim());
+        }
+        if (req.getActive() != null) {
+            page.setActive(req.getActive());
+        }
+        if (req.getSeo() != null) {
+            page.setSeo(toJson(req.getSeo()));
+        }
+    }
+
     private List<CmsBlockResponseDto> toBlockDtos(Long pageId) {
         return blocks.findByPageId(pageId).stream().map(this::toBlockDto).toList();
     }
 
     private CmsBlockResponseDto toBlockDto(CmsBlockEntity e) {
         CmsBlockResponseDto dto = new CmsBlockResponseDto(String.valueOf(e.getId()), e.getType(), e.getSortOrder(),
-                readMap(e.getData()), e.getTargetSegment());
+                readMap(e.getData()), e.getTargetSegment(), e.isVisible());
         dto.copyAudit(e);
         return dto;
     }

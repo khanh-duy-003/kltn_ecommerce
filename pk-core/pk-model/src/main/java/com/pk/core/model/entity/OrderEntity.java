@@ -49,6 +49,9 @@ public class OrderEntity extends UpdateEntity {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "guest_email")
+    private String guestEmail;
+
     @Column(name = "status")
     private String status = PENDING;
 

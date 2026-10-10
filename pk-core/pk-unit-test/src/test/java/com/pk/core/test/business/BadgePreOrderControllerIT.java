@@ -92,6 +92,25 @@ class BadgePreOrderControllerIT extends IntegrationTestBase {
     // ------------------------------------------------------------------ admin templates
 
     @Test
+    void patchTemplateCanActivateAndUpdateAssetFields() throws Exception {
+        String code = "ACT_" + tag();
+        String id = body(adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Chờ bật", "code", code,
+                "type", "TEXT", "badgeType", "NEW_ARRIVAL", "displayText", "Mới"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))).get("id").asText();
+        mvc.perform(jsonRequest(patch(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES + "/" + id),
+                        Map.of("status", "ACTIVE", "icon", "/i.svg", "iconMobile", "/im.svg", "imageMobile", "/m.png",
+                                "assetMeta", Map.of("w", 24), "defaultPriorityWeight", 7))
+                        .header("Authorization", adminAuth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.icon").value("/i.svg"))
+                .andExpect(jsonPath("$.data.defaultPriorityWeight").value(7));
+        mvc.perform(jsonRequest(patch(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES + "/" + id),
+                        Map.of("status", "NOPE")).header("Authorization", adminAuth()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void templateCrudFollowsSpec() throws Exception {
         String code = "NEW_" + tag();
         JsonNode created = body(adminPost(UrlConstant.Common.API + UrlConstant.Common.VERSION + UrlAdminConstant.Badge.TEMPLATES, Map.of("name", "Hàng mới", "code", code,

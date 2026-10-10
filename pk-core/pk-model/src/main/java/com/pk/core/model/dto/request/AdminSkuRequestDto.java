@@ -40,4 +40,6 @@ public class AdminSkuRequestDto {
     private int onHand;
 
     private boolean isDefault;
+    /** Chỉ dùng khi thêm/sửa SKU sau khi tạo sản phẩm: DRAFT | PUBLISHED | ARCHIVED (bỏ trống = giữ nguyên / DRAFT). */
+    private String status;
 }

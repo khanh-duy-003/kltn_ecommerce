@@ -17,6 +17,12 @@ public interface OrderService {
      * Promotion chưa làm) - cố ý để dành đợt sau. */
     OrderResponseDto create(Long userId, CreateOrderRequestDto req);
 
+    /** Đặt hàng không cần đăng nhập (địa chỉ gửi kèm). `guestCartId` (nếu có) để dọn các dòng đã mua khỏi giỏ khách. */
+    OrderResponseDto createGuest(com.pk.core.model.dto.request.GuestOrderRequestDto req, String guestCartId);
+
+    /** Tra cứu đơn của khách vãng lai bằng mã đơn + SĐT giao hàng; sai SĐT trả 404 như không có đơn. */
+    OrderResponseDto findGuestOrder(String code, String phone);
+
     PageResponse<OrderResponseDto> listMine(Long userId, int page, int take);
 
     OrderResponseDto findByCodeForUser(Long userId, String code);

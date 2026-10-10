@@ -1,5 +1,6 @@
 package com.pk.core.business.service;
 
+import com.pk.core.model.dto.request.CartItemQuantityRequestDto;
 import com.pk.core.model.dto.request.CartSyncRequestDto;
 import com.pk.core.model.dto.request.CartTotalRequestDto;
 import com.pk.core.model.dto.response.CartRecommendationResponseDto;
@@ -32,4 +33,13 @@ public interface CartService {
 
     /** Gợi ý sản phẩm cho giỏ (cùng danh mục với hàng trong giỏ lên trước, mới nhất trước), page 1-based. */
     CartRecommendationResponseDto recommend(Long userId, String guestId, int page, int take);
+
+    /**
+     * Đặt SỐ LƯỢNG CUỐI của một dòng (khác addOrSync: cộng dồn). quantity = 0 xoá dòng. Vượt tồn kho thì hạ về
+     * tối đa và trả success=false + reason INSUFFICIENT_STOCK; SKU không còn bán thì bỏ qua (reason NOT_FOUND).
+     */
+    CartSyncResponseDto setQuantity(Long userId, String guestId, CartItemQuantityRequestDto req);
+
+    /** Xoá hẳn một dòng (theo id SKU) khỏi giỏ; dòng không có trong giỏ thì bỏ qua. */
+    CartSyncResponseDto removeItem(Long userId, String guestId, String variationId);
 }

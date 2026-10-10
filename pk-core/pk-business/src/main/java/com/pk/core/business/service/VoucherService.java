@@ -39,4 +39,7 @@ public interface VoucherService {
      * nhận, giả định hợp lý nhất theo đúng schema hiện có; orders.applied_voucher_code chỉ là VARCHAR
      * lưu lại mã dùng lúc đặt hàng (không phải FK) nên xoá voucher không phá dữ liệu đơn hàng cũ. */
     void delete(Long voucherId);
+
+    /** Trả lại 1 lượt dùng của voucher theo mã (khi đơn áp voucher bị huỷ). Mã không còn tồn tại thì bỏ qua. */
+    void releaseUsage(String code);
 }

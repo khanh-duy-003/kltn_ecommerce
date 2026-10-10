@@ -14,6 +14,7 @@ import com.pk.core.common.exception.ErrorCode;
 import com.pk.core.common.exception.ResourceNotFoundException;
 import com.pk.core.common.web.PageResponse;
 import com.pk.core.model.dto.request.CartSyncItemRequestDto;
+import com.pk.core.model.dto.request.CartItemQuantityRequestDto;
 import com.pk.core.model.dto.request.CartSyncRequestDto;
 import com.pk.core.model.dto.request.CartTotalItemRequestDto;
 import com.pk.core.model.dto.request.CartTotalRequestDto;
@@ -106,6 +107,36 @@ public class CartServiceImpl implements CartService {
             addCapped(cart.getId(), sku, line.getValue(), outcome);
         }
         return respond(cart, outcome);
+    }
+
+    @Transactional
+    @Override
+    public CartSyncResponseDto setQuantity(Long userId, String guestId, CartItemQuantityRequestDto req) {
+        Long skuId = parseSkuId(req.getVariationId());
+        if (req.getQuantity() == 0) {
+            return removeItem(userId, guestId, req.getVariationId());
+        }
+        CartEntity cart = findOrCreateCart(userId, guestId);
+        Outcome outcome = new Outcome();
+        ProductSkuEntity sku = productSkus.findOne(skuId);
+        if (sku == null || !ProductSkuEntity.PUBLISHED.equals(sku.getStatus())) {
+            outcome.note("NOT_FOUND", "Sản phẩm không còn tồn tại");
+        } else {
+            addCapped(cart.getId(), sku, req.getQuantity(), outcome, true);
+        }
+        return respond(cart, outcome);
+    }
+
+    @Transactional
+    @Override
+    public CartSyncResponseDto removeItem(Long userId, String guestId, String variationId) {
+        Long skuId = parseSkuId(variationId);
+        CartEntity cart = findCart(userId, guestId);
+        if (cart == null) {
+            return new CartSyncResponseDto(true, null, new ArrayList<>(), null, null);
+        }
+        cartItems.deleteByCartIdAndSkuId(cart.getId(), skuId);
+        return respond(cart, new Outcome());
     }
 
     @Transactional
@@ -221,6 +252,11 @@ public class CartServiceImpl implements CartService {
 
     /** Cộng `qty` của SKU vào giỏ, chặn ở tồn kho còn bán được; ghi lý do vào outcome nếu bị chặn/giảm. */
     private void addCapped(Long cartId, ProductSkuEntity sku, int qty, Outcome outcome) {
+        addCapped(cartId, sku, qty, outcome, false);
+    }
+
+    /** absolute=true: qty là số lượng CUỐI của dòng (đặt lại); false: cộng dồn vào số đang có. */
+    private void addCapped(Long cartId, ProductSkuEntity sku, int qty, Outcome outcome, boolean absolute) {
         int available = sku.available();
         // Đặt trước đang bật: SKU hết hàng vẫn thêm được vào giỏ (không chặn số lượng).
         boolean preOrderLine = available <= 0 && preOrder.isEnabled();
@@ -229,7 +265,7 @@ public class CartServiceImpl implements CartService {
             return;
         }
         CartItemEntity existing = cartItems.findByCartIdAndSkuId(cartId, sku.getId());
-        int wanted = (existing == null ? 0 : existing.getQuantity()) + qty;
+        int wanted = absolute ? qty : (existing == null ? 0 : existing.getQuantity()) + qty;
         int finalQty = wanted;
         if (!preOrderLine && wanted > available) {
             finalQty = available;

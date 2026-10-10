@@ -14,4 +14,8 @@ public interface VoucherRepo extends PkRepo<VoucherEntity, Long> {
      * lượt (đối chiếu lúc VoucherServiceImpl.validate() còn lượt nhưng có request khác dùng trước). */
     @Modifying
     int incrementUsage(@Param("id") Long id);
+
+    /** Trả lại 1 lượt dùng (huỷ đơn có áp voucher). Không để used_count âm. */
+    @Modifying
+    int decrementUsage(@Param("id") Long id);
 }
