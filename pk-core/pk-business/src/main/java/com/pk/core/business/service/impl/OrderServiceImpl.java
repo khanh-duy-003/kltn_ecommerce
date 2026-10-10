@@ -275,6 +275,14 @@ public class OrderServiceImpl implements OrderService {
         order.touch();
         orders.update(order);
 
+        // Chuyển sang CANCELLED qua updateStatus cũng phải nhả tồn như cancel()/cancelByAdmin().
+        // CANCELLED không có trạng thái đi tiếp nên không thể nhả hai lần.
+        if (OrderEntity.CANCELLED.equals(newStatus) && !OrderEntity.CANCELLED.equals(oldStatus)) {
+            for (OrderItemEntity item : orderItems.findByOrderId(order.getId())) {
+                productSkus.releaseStock(item.getSkuId(), item.getQuantity());
+            }
+        }
+
         String note = request.getNote() != null && !request.getNote().isBlank()
                 ? request.getNote() : "Admin cập nhật trạng thái từ " + oldStatus + " sang " + newStatus;
         orderTimelines.create(new OrderTimelineEntity(order.getId(), newStatus, note, "ADMIN"));

@@ -230,9 +230,18 @@ public class CmsServiceImpl implements CmsService {
         };
     }
 
+    /** Admin FE lưu nguồn dữ liệu carousel ở config.dataSource.{productIds|collectionSlug}; ưu tiên khóa cấp trên cùng nếu có. */
+    private static Object carouselValue(Map<String, Object> config, String key) {
+        Object v = config.get(key);
+        if (v == null && config.get("dataSource") instanceof Map<?, ?> ds) {
+            v = ds.get(key);
+        }
+        return v;
+    }
+
     private Map<String, Object> resolveCarousel(Map<String, Object> config) {
         List<ProductResponseDto> list = new ArrayList<>();
-        Object ids = config.get("productIds");
+        Object ids = carouselValue(config, "productIds");
         if (ids instanceof List<?> items) {
             for (Object item : items) {
                 ProductResponseDto p = findProduct(item);
@@ -240,8 +249,8 @@ public class CmsServiceImpl implements CmsService {
                     list.add(p);
                 }
             }
-        } else if (text(config.get("collectionSlug")) != null) {
-            list.addAll(productService.search(null, text(config.get("collectionSlug")), null, null, null, null,
+        } else if (text(carouselValue(config, "collectionSlug")) != null) {
+            list.addAll(productService.search(null, text(carouselValue(config, "collectionSlug")), null, null, null, null,
                     "NEWEST", 1, carouselLimit(config)).content());
         }
         Map<String, Object> content = new LinkedHashMap<>();
@@ -320,13 +329,13 @@ public class CmsServiceImpl implements CmsService {
                         "config.layout không hợp lệ: " + layout + " (SLIDER | GRID | DOUBLE)", layout);
             }
         } else if (CmsBlockEntity.PRODUCT_CAROUSEL.equals(type)) {
-            Object ids = config.get("productIds");
+            Object ids = carouselValue(config, "productIds");
             boolean hasIds = ids instanceof List<?> l && !l.isEmpty();
-            if (!hasIds && text(config.get("collectionSlug")) == null) {
+            if (!hasIds && text(carouselValue(config, "collectionSlug")) == null) {
                 throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED,
                         "Block PRODUCT_CAROUSEL cần config.productIds (danh sách id/slug sản phẩm) hoặc config.collectionSlug");
             }
-            if (config.containsKey("productIds") && !(ids instanceof List<?>)) {
+            if (ids != null && !(ids instanceof List<?>)) {
                 throw BusinessException.badRequest(ErrorCode.VALIDATION_FAILED, "config.productIds phải là mảng");
             }
         }

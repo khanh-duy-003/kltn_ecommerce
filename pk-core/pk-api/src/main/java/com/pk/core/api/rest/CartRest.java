@@ -32,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class CartRest extends AbstractRest {
 
     private static final String GUEST_HEADER = "X-Guest-Cart-Id";
+    /** Tên header FE đang gửi (FE hiện dùng x-guest-id); chấp nhận cả hai, ưu tiên X-Guest-Cart-Id. */
+    private static final String GUEST_HEADER_ALIAS = "x-guest-id";
 
     private final CartService cartService;
 
@@ -40,7 +42,7 @@ public class CartRest extends AbstractRest {
                        @RequestHeader(value = GUEST_HEADER, required = false) String guestId,
                        HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(cartService.get(userId(principal), guestId));
+            return restSuccessHandle.handleSuccess(cartService.get(userId(principal), guest(guestId, httpRequest)));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
@@ -52,7 +54,7 @@ public class CartRest extends AbstractRest {
                              @Valid @RequestBody CartSyncRequestDto request,
                              HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(cartService.addOrSync(userId(principal), guestId, request));
+            return restSuccessHandle.handleSuccess(cartService.addOrSync(userId(principal), guest(guestId, httpRequest), request));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
@@ -63,7 +65,7 @@ public class CartRest extends AbstractRest {
                          @RequestHeader(value = GUEST_HEADER, required = false) String guestId,
                          HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(cartService.merge(principal.getId(), guestId));
+            return restSuccessHandle.handleSuccess(cartService.merge(principal.getId(), guest(guestId, httpRequest)));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
@@ -86,7 +88,7 @@ public class CartRest extends AbstractRest {
                                   @RequestParam(defaultValue = "20") int take,
                                   HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
         try {
-            return restSuccessHandle.handleSuccess(cartService.recommend(userId(principal), guestId, page, take));
+            return restSuccessHandle.handleSuccess(cartService.recommend(userId(principal), guest(guestId, httpRequest), page, take));
         } catch (Exception ex) {
             return restErrorHandle.handleException(ex, httpRequest, httpResponse);
         }
@@ -94,5 +96,9 @@ public class CartRest extends AbstractRest {
 
     private static Long userId(SecurityUser principal) {
         return principal == null ? null : principal.getId();
+    }
+
+    private static String guest(String primary, HttpServletRequest request) {
+        return primary != null && !primary.isBlank() ? primary : request.getHeader(GUEST_HEADER_ALIAS);
     }
 }
